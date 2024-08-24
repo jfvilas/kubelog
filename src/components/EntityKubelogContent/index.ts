@@ -1,0 +1,1 @@
+export { EntityKubelogContent } from './EntityKubelogContent';
