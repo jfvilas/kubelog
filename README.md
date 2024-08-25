@@ -13,7 +13,7 @@ This Backstage plugin add Backstage a feature for browsing Kubernetes logs of en
 
 When Kubelog is correctly installed and configured you will have a chance to view Kubernetes logs on your Backstage like in this sample:
 
-![kubelog-running](./images/kubelog-running.png)
+![kubelog-running](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/kubelog-running.png)
 
 The this forntend plugin includes just the visualization of logs information, but all the configuration, and specially **permission settings**, are done in the backend plugin and the app-config YAML. You can restrict access to pods, namespaces, clusters, etc... buy configuring permissions to be used by the backend plugin.
 
@@ -108,21 +108,21 @@ If everyting is correctly configured and tagged, the user should see a list of c
 ## Ready, set, go!
 If you followed all these steps and our work is well done (not sure on this), you would see a 'Kubelog' tab in your **Entity Page**, like this one:
 
-![kubelog-tab](./images/kubelog-tab.png)
+![kubelog-tab](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/kubelog-tab.png)
 
 When you access the tab, if you have not yet tagged your entities you would see a message like this one explaning how to do that:
 
-![notfound](./images/kubelog-notfound.png)
+![notfound](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/kubelog-notfound.png)
 
 Once you tagged your entities and your Kubernetes objects, you should see something similar to this:
 
-![available](./images/kubelog-available.png)
+![available](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/kubelog-available.png)
 
 Kubelog is ready to show logs!!
 
 Just *select the cluster* on the cluster card and eventually set the *options* you want for the log streaming. On the new card that will appear on right, you will see all the Kubernetes namespaces available and a stream control (download, play, pause and stop). *Select a namespace*, *click PLAY* button and you will see your log **refreshing in real-time**.
 
-![running](./images/kubelog-running.png)
+![running](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/kubelog-running.png)
 
 Feel free to open issues and ask for more features.
 
