@@ -4,9 +4,9 @@ This package is a Backstage plugin for viewing Kubernetes logs via Kwirth.
 
 This Backstage plugin allows you to view Kubernetes logs associated to your entity directly inside your Backstage instance. It's very important to understand that for this plugin to work you need to install Kwirth on your Kubernetes cluster, that is, this plugin is just another front end for [Kwirth](https://jfvilas.github.io/kwirth).
 
-Kwirth is a really-easy-to-use log exporting system for Kubernetes that runs in only one pod (*no database is needed*). Refer to Kwirth GitHub project for [info on installation](https://github.com/jfvilasPersonal/kwirth?tab=readme-ov-file#installation). Kwirth installation is *one command away* from you.
+Kwirth is a really-easy-to-use log exporting system for Kubernetes that runs in only one pod (*no database is needed*). Refer to Kwirth GitHub project for [info on installation](https://github.com/jfvilas/kwirth?tab=readme-ov-file#installation). Kwirth installation is *one command away* from you.
 
-You can access [Kwirth project here](https://github.com/jfvilasPersonal/kwirth).
+You can access [Kwirth project here](https://github.com/jfvilas/kwirth).
 
 ## What is this plugin for?
 This Backstage plugin add Backstage a feature for browsing Kubernetes logs of entities directly inside Backstage frontend application. The plugin will be enabled for any entity taht is corectly tagged (according to Backstage Kubernetes core feature) and its correpsonding Kubernetes resources are found on any of the clusters that have been added to Backstage.

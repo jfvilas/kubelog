@@ -1,6 +1,6 @@
 {
   "name": "@jfvilas/plugin-kubelog",
-  "version": "0.8.31",
+  "version": "0.8.32",
   "description": "Frontend plugin for viewing Kubernetes logs in Backstage",
   "keywords": [
     "Backstage",
@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/jfvilasPersonal/kubelog"
+    "url": "https://github.com/jfvilas/kubelog"
   },
   "publishConfig": {
     "access": "public"
@@ -29,7 +29,7 @@
   "license": "Apache-2.0",
   "author": {
     "name": "Julio Fernandez",
-    "url": "https://github.com/jfvilasPersonal",
+    "url": "https://github.com/jfvilas",
     "email": "jfvilas@outlook.com"
   },
   "sideEffects": false,
