@@ -15,7 +15,7 @@ When Kubelog is correctly installed and configured you will have a chance to vie
 
 ![kubelog-running](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/kubelog-running.png)
 
-The this forntend plugin includes just the visualization of logs information, but all the configuration, and specially **permission settings**, are done in the backend plugin and the app-config YAML. You can restrict access to pods, namespaces, clusters, etc... buy configuring permissions to be used by the backend plugin.
+This frontend plugin includes just the visualization of logs information, but all the configuration, and specially **permission settings**, are done in the backend plugin and the app-config YAML. You can restrict access to pods, namespaces, clusters, etc... buy configuring permissions to be used by the backend plugin.
 
 The backend plugin is only responsible for configuration and permissions, all the capabilities related with log viewing are implemente en the frontend plugin, who establishes the connections to the Kwirth instance.
 
