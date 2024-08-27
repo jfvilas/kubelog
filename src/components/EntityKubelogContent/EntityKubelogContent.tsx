@@ -364,11 +364,10 @@ export const EntityKubelogContent = () => {
 
             { selectedClusterName &&
                 <>
-                    <div style={{ display: 'flex', height: '70vh' }}>
-                        <Card style={{ width:'100%'}}>
+                        <Card style={{ maxHeight:'70vh'}}>
                             <CardHeader
                                 title={selectedClusterName}
-                                style={{marginTop:-4, marginBottom:4}}
+                                style={{marginTop:-4, marginBottom:4, flexShrink:0}}
                                 action={<>
                                     <IconButton title="download" onClick={handleDownload}>
                                         <DownloadIcon />
@@ -391,15 +390,12 @@ export const EntityKubelogContent = () => {
                             }
                             </Typography>
                             <Divider/>
-                            <CardContent>
-                                <Box sx={{ flex:1, overflow:'auto', height:'60vh'}}>
-                                    <pre ref={preRef}>
+                            <CardContent style={{ overflow: 'auto' }}>
+                                <pre ref={preRef}>
                                     { messages.map (m => m.text+'\n') }
-                                    </pre>
-                                </Box>
+                                </pre>
                             </CardContent>
                         </Card>
-                    </div>
                 </>
             }
 
