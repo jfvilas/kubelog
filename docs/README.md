@@ -15,9 +15,9 @@ When Kubelog is correctly installed and configured you will have a chance to vie
 
 ![kubelog-running](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/kubelog-running.png)
 
-The this forntend plugin includes just the visualization of logs information, but all the configuration, and specially **permission settings**, are done in the backend plugin and the app-config YAML. You can restrict access to pods, namespaces, clusters, etc... buy configuring permissions to be used by the backend plugin.
+This frontend plugin includes just the visualization of log information. All needed configuration, and specially **permission settings**, are done in the backend plugin and the app-config YAML. You can restrict access to pods, namespaces, clusters, etc... by configuring permissions to be applied by the backend plugin.
 
-The backend plugin is only responsible for configuration and permissions, all the capabilities related with log viewing are implemente en the frontend plugin, who establishes the connections to the Kwirth instance.
+The backend plugin is the only responsible for configuration and permissions, all the capabilities related with log viewing are implemented in the frontend plugin, who establishes the connections to the corresponding Kwirth instances.
 
 
 ## How does it work?
@@ -26,12 +26,12 @@ Let's explain this by following a user working sequence:
 1. A Backstage user searchs for an entity in the Backstage.
 2. In the entity page there will be a new tab named 'KUBELOG'.
 3. When the user clicks on KUBELOG the frontend plugin sends a request to the backend plugin asking for logging information on several Kubernetes clusters.
-4. The backend plugin sends requests to the Kwirth instances that are running on all the clusters added to Backstage. These requests ask for the following: *'Tell me all the podos that are labeled with the kubernetes-id label and do correspond with the entity I'm looking for'*. In response to this query, each cluster answers with a list of pods and the namespaces where they are running.
+4. The backend plugin sends requests to the Kwirth instances that are running on all the clusters added to Backstage. These requests ask for the following: *'Tell me all the pods that are labeled with the kubernetes-id label and do correspond with the entity I'm looking for'*. In response to this query, each Kwirth instance answers with a list of pods and the namespaces where they are running.
 5. The backend plugin check the permissions of the connected user and prunes the pods list removing the ones that the user has not access to.
-6. With the final pod list, the backend plugin sends several request to the Kwirth instances on the clusters asking for an API Key specific for viewing the logs of the pods.
-7. With all this information, the backend builds a unique response containing all the pods the user have access to, and the API keys to access the logs.
+6. With the final pod list, the backend plugin sends requests to the Kwirth instances on the clusters asking for an API Key specific for viewing the pod logs.
+7. With all this information, the backend builds a unique response containing all the pods the user have access to, and the API keys needed to access those logs.
 
-If everyting is correctly configured and tagged, the user should see a list of clusters, and when selecting a cluster he should see a list of namespaces where the entity is running.
+If everyting is correctly configured and tagged, the user should see a list of clusters. When selecting a cluster, the user should see a list of namespaces where the entity is running.
 
 ## Installation
 1. Install corresponding Backstage backend plugin [more information here](https://www.npmjs.com/package/@jfvilas/plugin-kubelog-backend).
@@ -57,7 +57,7 @@ If everyting is correctly configured and tagged, the user should see a list of c
     import { EntityKubelogContent, isKubelogAvailable } from '@jfvilas/plugin-kubelog';
     ```
 
-    Then, add a tab to your EntityPage.
+    Then, add a tab to your EntityPage (the 'if' is optional, you can keep the 'Kubelog' tab always visible if you prefer to do it that way).
     ````jsx
     // Note: Add to any other Pages as well (e.g. defaultEntityPage and webSiteEntityPage)
     const serviceEntityPage = (
@@ -126,7 +126,17 @@ Just *select the cluster* on the cluster card and eventually set the *options* y
 
 Feel free to open issues and ask for more features.
 
+## Status information
+When the log stream starts, and all along the life of the stream (until it gets stopped or the window is closed), you will receive status information regarding the pod you are watching. This status information is shown on the top of the card (just at the immediate right of the cluster name) including 3 kids of information:
+
+  - Info. Informaiton regarding Pod management at Kubernetes cluster level (new podd, pod ended or pod modified).
+  - Warning. Warning related to the log stream.
+  - Error. If there is an error in the stream, like invalid key use, or erroneous pod tagging, erros will be shown here.
+
+The icons will light up in its corresponding color when a new message arrives.
+
 ##  Roadmap
- - Add permissions for viewing and operating in a separate way.
+ - ~~Add status information (received via the websocket).~~ DONE!
+ - Add permissions for managing pod-view and pod-operate in a separate way.
  - Add ability to restart pod (depending on user permissions).
- - Show all namespaces (even if the user has not access to view logs), and user would be allowed to only select permitted namespaces.
+ - ~~Show all namespaces (even if the user has not access to view logs), and user would be allowed to only select permitted namespaces.~~ DONE!

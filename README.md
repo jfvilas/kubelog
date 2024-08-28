@@ -126,8 +126,17 @@ Just *select the cluster* on the cluster card and eventually set the *options* y
 
 Feel free to open issues and ask for more features.
 
+## Status information
+When the log stream starts, and all along the life of the stream (until it gets stopped or the window is closed), you will receive status information regarding the pod you are watching. This status information is shown on the top of the card (just at the immediate right of the cluster name) including 3 kids of information:
+
+  - Info. Informaiton regarding Pod management at Kubernetes cluster level (new podd, pod ended or pod modified).
+  - Warning. Warning related to the log stream.
+  - Error. If there is an error in the stream, like invalid key use, or erroneous pod tagging, erros will be shown here.
+
+The icons will light up in its corresponding color when a new message arrives.
+
 ##  Roadmap
- - Add status information (received via the websocket).
- - Add permissions for managing viewing and operating in a separate way.
+ - ~~Add status information (received via the websocket).~~ DONE!
+ - Add permissions for managing pod-view and pod-operate in a separate way.
  - Add ability to restart pod (depending on user permissions).
- - Show all namespaces (even if the user has not access to view logs), and user would be allowed to only select permitted namespaces.
+ - ~~Show all namespaces (even if the user has not access to view logs), and user would be allowed to only select permitted namespaces.~~ DONE!
