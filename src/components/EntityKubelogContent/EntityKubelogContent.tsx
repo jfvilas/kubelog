@@ -187,76 +187,77 @@ export const EntityKubelogContent = () => {
     }
 
     const selectCluster = (name:string|undefined) => {
-      if (name) {
-        setSelectedClusterName(name);
-        resources.filter(cluster => cluster.name===name).map ( x => {
-          var namespaces=Array.from(new Set(x.data.map ( (p:any) => p.namespace))) as string[];
-          setNamespaceList(namespaces);
-        })
-        setSelectedNamespace('');
-        setMessages([{type:'log',text:'Select namespace in order to decide which pod logs to view.'}]);
-        setStatusMessages([]);
-        clickStop();
-      }
+        if (name) {
+            setSelectedClusterName(name);
+            resources.filter(cluster => cluster.name===name).map ( x => {
+                var namespaces=Array.from(new Set(x.data.map ( (p:any) => p.namespace))) as string[];
+                setNamespaceList(namespaces);
+            })
+            setSelectedNamespace('');
+            setMessages([{type:'log',text:'Select namespace in order to decide which pod logs to view.'}]);
+            setStatusMessages([]);
+            clickStop();
+        }
     }
 
     const selectNamespace = (ns:string) => {
-        setSelectedNamespace(ns);
-        setMessages([{type:'log',text:'Press PLAY on top-right button to start viewing your log.'}]);
-        setStatusMessages([]);
-        clickStop();
+        if (selectedNamespace!==ns) {
+            setSelectedNamespace(ns);
+            setMessages([{type:'log',text:'Press PLAY on top-right button to start viewing your log.'}]);
+            setStatusMessages([]);
+            clickStop();
+        }
     }
 
     const websocketOnChunk = (event:any) => {
-      var e:any={};
-      try {
-        e=JSON.parse(event.data);
-      }
-      catch (err) {
-        console.log(err);
-        console.log(event.data);
-        return;
-      }
+        var e:any={};
+        try {
+            e=JSON.parse(event.data);
+        }
+        catch (err) {
+            console.log(err);
+            console.log(event.data);
+            return;
+        }
 
-      var msg=e as Message;
-      console.log(msg);
-      switch (msg.type) {
-          case 'info':
-          case 'warning':
-          case 'error':
-            setStatusMessages ((prev) => [...prev, msg]);
-            break;
-          case 'log':
-              if (paused.current) {
-                  setPendingMessages((prev) => [ ...prev, msg ]);
-              }
-              else {
-                  setMessages((prev) => {
-                      while (prev.length>LOG_MAX_MESSAGES-1) {
-                          prev.splice(0,1);
-                      }
-                      return [ ...prev, msg ]
-                  });
-              }        
-              break;
-          default:
-              console.log(msg);
-              setStatusMessages ((prev) => [...prev, {type:'error',text:'Invalid message type received: '+msg.type}]);
-              break;
-      }
-
+        var msg=e as Message;
+        console.log(msg);
+        switch (msg.type) {
+            case 'info':
+            case 'warning':
+            case 'error':
+                setStatusMessages ((prev) => [...prev, msg]);
+                break;
+            case 'log':
+                if (paused.current) {
+                    setPendingMessages((prev) => [ ...prev, msg ]);
+                }
+                else {
+                    setMessages((prev) => {
+                        while (prev.length>LOG_MAX_MESSAGES-1) {
+                            prev.splice(0,1);
+                        }
+                        return [ ...prev, msg ]
+                    });
+                }        
+                break;
+            default:
+                console.log(msg);
+                setStatusMessages ((prev) => [...prev, {type:'error',text:'Invalid message type received: '+msg.type}]);
+                break;
+        }
     }
 
     const websocketOnOpen = (ws:WebSocket, options:any) => {
         var cluster=resources.find(cluster => cluster.name===selectedClusterName);
         if (!cluster) {
-            // setShowError(msg.text);
+            //+++ setShowError(msg.text);
             return;
         }
         var pod=(cluster.data as Pod[]).find(p => p.namespace===selectedNamespace);
 
         if (!pod) {
-            // setShowError(msg.text);
+            //+++ setShowError(msg.text);
             return;
         }
         console.log(`WS connected`);
@@ -278,7 +279,7 @@ export const EntityKubelogContent = () => {
     const startLogViewer = (options:any) => {
       var cluster=resources.find(cluster => cluster.name===selectedClusterName);
       if (!cluster) {
-        //show wargning
+        //+++ show wargning
         return;
       }
 
@@ -344,6 +345,25 @@ export const EntityKubelogContent = () => {
                 </DialogActions>
             </Dialog>
         )
+    }
+
+    /**
+     * 
+     * @returns a list of JSX elements containing Chips with namespaces, disabling (color:red) those which the user has no accessKey for.
+     */
+    const ShowNamespaces = () => {
+      var cluster=resources.find(cluster => cluster.name===selectedClusterName);
+      return (<>
+        {
+          namespaceList.map (ns => {
+            var existsAccessKey = cluster?.data.some(p => p.namespace===ns && p.accessKey);
+            if (existsAccessKey)
+              return <Chip label={ns as string} onClick={() => selectNamespace(ns as string)} size='small' color='primary' variant={ns===selectedNamespace?'default':'outlined'}/>
+            else
+              return <Chip label={ns as string} size='small' color='secondary' variant={'outlined'}/>
+          })
+        }
+      </>)
     }
 
     const statusButtons = (title:string) => {
@@ -455,9 +475,7 @@ export const EntityKubelogContent = () => {
                                 />
                                 
                                 <Typography style={{marginLeft:16, marginBottom:4}}>
-                                {
-                                    namespaceList.map (ns => <Chip label={ns as string} onClick={() => selectNamespace(ns as string)} size='small' color='primary' variant={ns===selectedNamespace?'default':'outlined'}/>)
-                                }
+                                  <ShowNamespaces/>
                                 </Typography>
                                 <Divider/>
                                 <CardContent style={{ overflow: 'auto' }}>
