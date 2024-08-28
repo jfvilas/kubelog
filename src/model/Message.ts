@@ -17,9 +17,10 @@ limitations under the License.
  * This is the format of the messages received from Kwirth via the WebSocket
  */
 export class Message {
-    public timestamp?:Date;
+    public timestamp?:string;
     public cluster?:string='';
     public namespace?:string='';
+    public podName?:string='';
     public resource?:string='';
     public text:string='';
     public type:string='';

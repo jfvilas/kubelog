@@ -28,7 +28,7 @@ import { ComponentNotFound, ErrorType } from '../ComponentNotFound';
 
 // Material-UI
 import { makeStyles, Theme } from '@material-ui/core/styles';
-import { Grid, Box } from '@material-ui/core';
+import { Grid, Box, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@material-ui/core';
 import { Card, CardHeader, CardContent } from '@material-ui/core';
 import { ListItem, ListItemText, List } from '@material-ui/core';
 import { Chip, Checkbox, FormControlLabel, Snackbar } from '@material-ui/core';
@@ -41,6 +41,9 @@ import PlayIcon from '@material-ui/icons/PlayArrow';
 import PauseIcon from '@material-ui/icons/Pause';
 import StopIcon from '@material-ui/icons/Stop';
 import CloseIcon from '@material-ui/icons/Close';
+import InfoIcon from '@material-ui/icons/Info';
+import WarningIcon from '@material-ui/icons/Warning';
+import ErrorIcon from '@material-ui/icons/Error';
 import DownloadIcon from '@material-ui/icons/CloudDownload';
 import KueblogLogo from '../../assets/kubelog-logo.svg';
 
@@ -132,163 +135,242 @@ const KubelogOptions = (props: {
 
 
 export const EntityKubelogContent = () => { 
-  const { entity } = useEntity();
-  const kubelogApi = useApi(kubelogApiRef);
-  const [resources, setResources] = useState<Resources[]>([]);
-  const [selectedClusterName, setSelectedClusterName] = useState('');
-  const [namespaceList, setNamespaceList] = useState<string[]>([]);
-  const [selectedNamespace, setSelectedNamespace] = useState('');
-  const [showError, setShowError] = useState('');
-  const [started, setStarted] = useState(false);
-  const [stopped, setStopped] = useState(true);
-  const paused=useRef<boolean>(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
-  const [websocket, setWebsocket] = useState<WebSocket>();
-  const [kubelogOptions, setKubelogOptions ] = useState<any>({timestamp:false, previous:false});
-  const preRef = useRef<HTMLPreElement|null>(null);
+    const { entity } = useEntity();
+    const kubelogApi = useApi(kubelogApiRef);
+    const [resources, setResources] = useState<Resources[]>([]);
+    const [selectedClusterName, setSelectedClusterName] = useState('');
+    const [namespaceList, setNamespaceList] = useState<string[]>([]);
+    const [selectedNamespace, setSelectedNamespace] = useState('');
+    const [showError, setShowError] = useState('');  //+++ review if this is needed once we have errorMessages
+    const [started, setStarted] = useState(false);
+    const [stopped, setStopped] = useState(true);
+    const paused=useRef<boolean>(false);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [statusMessages, setStatusMessages] = useState<Message[]>([]);
+    const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
+    const [websocket, setWebsocket] = useState<WebSocket>();
+    const [kubelogOptions, setKubelogOptions ] = useState<any>({timestamp:false, previous:false});
+    const preRef = useRef<HTMLPreElement|null>(null);
+    const [showStatusDialog, setShowStatusDialog] = useState(false);
+    const [statusType, setStatusType] = useState('');
 
-  const { loading, error } = useAsync ( async () => {
-    var data = await kubelogApi.getResources(entity);
-    setResources(data);
-  });
+    const { loading, error } = useAsync ( async () => {
+      var data = await kubelogApi.getResources(entity);
+      setResources(data);
+    });
 
-  const clickStart = (options:any) => {
-    if (!paused.current) {
-      setStarted(true);
+    const clickStart = (options:any) => {
+      if (!paused.current) {
+        setStarted(true);
+        paused.current=false;
+        setStopped(false);
+        startLogViewer(options);
+      }
+      else {
+        setMessages( (prev) => [ ...prev, ...pendingMessages]);
+        setPendingMessages([]);
+        paused.current=false;
+        setStarted(true);
+      }
+    }
+
+    const clickPause = () => {
+      setStarted(false);
+      paused.current=true;
+    }
+
+    const clickStop = () => {
+      setStarted(false);
+      setStopped(true);
       paused.current=false;
-      setStopped(false);
-      startLogViewer(options);
-    }
-    else {
-      setMessages( (prev) => [ ...prev, ...pendingMessages]);
-      setPendingMessages([]);
-      paused.current=false;
-      setStarted(true);
-    }
-  }
-
-  const clickPause = () => {
-    setStarted(false);
-    paused.current=true;
-  }
-
-  const clickStop = () => {
-    setStarted(false);
-    setStopped(true);
-    paused.current=false;
-    stopLogViewer();
-  }
-
-  const selectCluster = (name:string|undefined) => {
-    if (name) {
-      setSelectedClusterName(name);
-      resources.filter(cluster => cluster.name===name).map ( x => {
-        var namespaces=Array.from(new Set(x.data.map ( (p:any) => p.namespace))) as string[];
-        setNamespaceList(namespaces);
-      })
-      setSelectedNamespace('');
-      setMessages([{type:'log',text:'Select namespace in order to decide which pod logs to view.'}]);
-      clickStop();
-    }
-  }
-
-  const selectNamespace = (ns:string) => {
-    setSelectedNamespace(ns);
-    setMessages([{type:'log',text:'Press PLAY on top-right button to start viewing your log.'}]);
-    clickStop();
-  }
-
-  const websocketOnChunk = (event:any) => {
-    var e:any={};
-    try {
-      e=JSON.parse(event.data);
-    }
-    catch (err) {
-      console.log(err);
-      console.log(event.data);
-      return;
+      stopLogViewer();
     }
 
-    var msg=new Message(e.text);
-    if (msg.type==='error') {
-      setShowError(msg.text);
-      return;
+    const selectCluster = (name:string|undefined) => {
+      if (name) {
+        setSelectedClusterName(name);
+        resources.filter(cluster => cluster.name===name).map ( x => {
+          var namespaces=Array.from(new Set(x.data.map ( (p:any) => p.namespace))) as string[];
+          setNamespaceList(namespaces);
+        })
+        setSelectedNamespace('');
+        setMessages([{type:'log',text:'Select namespace in order to decide which pod logs to view.'}]);
+        setStatusMessages([]);
+        clickStop();
+      }
     }
 
-    if (paused.current) {
-      setPendingMessages((prev) => [ ...prev, msg ]);
+    const selectNamespace = (ns:string) => {
+        setSelectedNamespace(ns);
+        setMessages([{type:'log',text:'Press PLAY on top-right button to start viewing your log.'}]);
+        setStatusMessages([]);
+        clickStop();
     }
-    else {
-      setMessages((prev) => {
-        while (prev.length>LOG_MAX_MESSAGES-1) {
-          prev.splice(0,1);
+
+    const websocketOnChunk = (event:any) => {
+      var e:any={};
+      try {
+        e=JSON.parse(event.data);
+      }
+      catch (err) {
+        console.log(err);
+        console.log(event.data);
+        return;
+      }
+
+      var msg=e as Message;
+      console.log(msg);
+      switch (msg.type) {
+          case 'info':
+          case 'warning':
+          case 'error':
+            setStatusMessages ((prev) => [...prev, msg]);
+            break;
+          case 'log':
+              if (paused.current) {
+                  setPendingMessages((prev) => [ ...prev, msg ]);
+              }
+              else {
+                  setMessages((prev) => {
+                      while (prev.length>LOG_MAX_MESSAGES-1) {
+                          prev.splice(0,1);
+                      }
+                      return [ ...prev, msg ]
+                  });
+              }        
+              break;
+          default:
+              console.log(msg);
+              setStatusMessages ((prev) => [...prev, {type:'error',text:'Invalid message type received: '+msg.type}]);
+              break;
+      }
+
+    }
+
+    const websocketOnOpen = (ws:WebSocket, options:any) => {
+        var cluster=resources.find(cluster => cluster.name===selectedClusterName);
+        if (!cluster) {
+            // setShowError(msg.text);
+            return;
         }
-        return [ ...prev, msg ]
-      });
-    }
-  }
+        var pod=(cluster.data as Pod[]).find(p => p.namespace===selectedNamespace);
 
-  const websocketOnOpen = (ws:WebSocket, options:any) => {
-    var cluster=resources.find(cluster => cluster.name===selectedClusterName);
-    if (!cluster) {
-      //show warning
-      return;
-    }
-    var pod=(cluster.data as Pod[]).find(p => p.namespace===selectedNamespace);
-    console.log(pod);
-
-    if (!pod) {
-      // show error
-      return;
-    }
-    console.log(`WS connected`);
-    var payload={ 
-      accessKey:accessKeySerialize(pod.accessKey!),
-      scope:'filter',
-      namespace:selectedNamespace,
-      set:'',
-      pod:pod.name,
-      container:'',
-      timestamp:options.timestamp,
-      previous:options.previous,
-      maxMessages:LOG_MAX_MESSAGES
-    };
-    console.log(JSON.stringify(payload));
-    ws.send(JSON.stringify(payload));
-  }
-
-  const startLogViewer = (options:any) => {
-    var cluster=resources.find(cluster => cluster.name===selectedClusterName);
-    if (!cluster) {
-      //show wargning
-      return;
+        if (!pod) {
+            // setShowError(msg.text);
+            return;
+        }
+        console.log(`WS connected`);
+        var payload={ 
+            accessKey:accessKeySerialize(pod.accessKey!),
+            scope:'filter',
+            namespace:selectedNamespace,
+            set:'',
+            pod:pod.name,
+            container:'',
+            timestamp:options.timestamp,
+            previous:options.previous,
+            maxMessages:LOG_MAX_MESSAGES
+        };
+        console.log(JSON.stringify(payload));
+        ws.send(JSON.stringify(payload));
     }
 
-    var ws = new WebSocket(cluster.url);
-    ws.onopen = () => websocketOnOpen(ws, options); 
-    ws.onmessage = (event) => websocketOnChunk(event);
-    ws.onclose = (event) => websocketOnClose(event);
-    setWebsocket(ws);
-    setMessages([]);
-  }
+    const startLogViewer = (options:any) => {
+      var cluster=resources.find(cluster => cluster.name===selectedClusterName);
+      if (!cluster) {
+        //show wargning
+        return;
+      }
 
-  const websocketOnClose = (_event:any) => {
-    console.log(`WS disconnected`);
-  }
-
-  const stopLogViewer = () => {
-    messages.push({type:'log',text:'============================================================================================================================'});
-    websocket?.close();
-  }
-
-  const changeLogConfig = (options:any) => {
-    setKubelogOptions(options);
-    if (started) {
-      clickStop();
-      clickStart(options);
+      var ws = new WebSocket(cluster.url);
+      ws.onopen = () => websocketOnOpen(ws, options); 
+      ws.onmessage = (event) => websocketOnChunk(event);
+      ws.onclose = (event) => websocketOnClose(event);
+      setWebsocket(ws);
+      setMessages([]);
     }
-  }
+
+    const websocketOnClose = (_event:any) => {
+      console.log(`WS disconnected`);
+    }
+
+    const stopLogViewer = () => {
+      messages.push({type:'log',text:'============================================================================================================================'});
+      websocket?.close();
+    }
+
+    const changeLogConfig = (options:any) => {
+      setKubelogOptions(options);
+      if (started) {
+        clickStop();
+        clickStart(options);
+      }
+    }
+
+    const actionButtons = () => {
+        return <>
+            <IconButton title="download" onClick={handleDownload}>
+                <DownloadIcon />
+            </IconButton>
+            <IconButton onClick={() => clickStart(kubelogOptions)} aria-label="Play" disabled={started || !paused || selectedNamespace===''} title="play">
+                <PlayIcon />
+            </IconButton>
+            <IconButton onClick={clickPause} aria-label="Pause" title="pause" disabled={!((started && !paused.current) && selectedNamespace!=='')}>
+                <PauseIcon />
+            </IconButton>
+            <IconButton onClick={clickStop} aria-label="Pause" title="pause" disabled={stopped || selectedNamespace===''}>
+                <StopIcon />
+            </IconButton>
+        </>;
+    }
+
+    const StatusLog = (props:{type:string}) => {
+        const clear = (type:string) => {
+          setStatusMessages(statusMessages.filter(m=> m.type!==type));
+          setShowStatusDialog(false);
+        }
+
+        return (
+            <Dialog open={true}>
+                <DialogTitle>
+                    Stauts: {props.type} 
+                </DialogTitle>
+                <DialogContent>
+                    { statusMessages.filter(m => m.type===props.type).map(m => <Typography>{m.timestamp}&nbsp;&nbsp;&nbsp;&nbsp;{m.text}</Typography>) }
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => clear(props.type)} color='primary' variant='contained'>Clear</Button>
+                  <Button onClick={() => setShowStatusDialog(false)} color='primary' variant='contained'>Close</Button>
+                </DialogActions>
+            </Dialog>
+        )
+    }
+
+    const statusButtons = (title:string) => {
+        const show = (type:string) => {
+            setShowStatusDialog(true);
+            setStatusType(type);
+        }
+        
+        return (
+        <Grid container direction='row' >
+            <Grid item>
+                <Typography variant='h5'>{title}</Typography>
+            </Grid>
+            <Grid item style={{marginTop:'-8px'}}>
+            <IconButton title="info" disabled={!statusMessages.some(m=>m.type==='info')} onClick={() => show('info')}>
+                <InfoIcon style={{ color:statusMessages.some(m=>m.type==='info')?'blue':'gray'}}/>
+            </IconButton>
+            <IconButton title="warning" disabled={!statusMessages.some(m=>m.type==='warning')} onClick={() => show('warning')} style={{marginLeft:'-16px'}}>
+                <WarningIcon style={{ color:statusMessages.some(m=>m.type==='warning')?'gold':'gray'}}/>
+            </IconButton>
+            <IconButton title="error" disabled={!statusMessages.some(m=>m.type==='error')} onClick={() => show('error')} style={{marginLeft:'-16px'}}>
+                <ErrorIcon style={{ color:statusMessages.some(m=>m.type==='error')?'red':'gray'}}/>
+            </IconButton>
+            </Grid>
+        </Grid>
+        );
+    }
 
     const handleDownload = () => {
       var content=preRef.current!.innerHTML.replaceAll('<pre>','').replaceAll('</pre>','\n');
@@ -307,103 +389,92 @@ export const EntityKubelogContent = () => {
     }
 
     return (
-        <Content>
-        { showError!=='' && 
-            <Snackbar 
-                message={`An error has ocurred: ${showError}`}
-                open={true}
-                autoHideDuration={3000}
-                anchorOrigin={{ vertical:'top', horizontal:'center' }}
-                action={ 
-                    <IconButton size="small" aria-label="close" color="inherit" onClick={() => setShowError('')}>
-                    <CloseIcon fontSize="small" />
-                    </IconButton>
-                }>
-            </Snackbar>
-        }
+        <>
+            <Content>
+            { showError!=='' && 
+                <Snackbar 
+                    message={`An error has ocurred: ${showError}`}
+                    open={true}
+                    autoHideDuration={3000}
+                    anchorOrigin={{ vertical:'top', horizontal:'center' }}
+                    action={ 
+                        <IconButton size="small" aria-label="close" color="inherit" onClick={() => setShowError('')}>
+                            <CloseIcon fontSize="small" />
+                        </IconButton>
+                    }>
+                </Snackbar>
+            }
 
-        { loading && <Progress/> }
+            { loading && <Progress/> }
 
-        {!isKubelogAvailable(entity) && !loading && error && (
-            <WarningPanel title={'An error has ocurred while obtaining data from kuebernetes clusters.'} message={error?.message} />
-        )}
+            {!isKubelogAvailable(entity) && !loading && error && (
+                <WarningPanel title={'An error has ocurred while obtaining data from kuebernetes clusters.'} message={error?.message} />
+            )}
 
-        {!isKubelogAvailable(entity) && !loading && (
-            <MissingAnnotationEmptyState readMoreUrl='https://kubelog.github.com' annotation={ANNOTATION_KUBELOG_LOCATION}/>
-        )}
+            {!isKubelogAvailable(entity) && !loading && (
+                <MissingAnnotationEmptyState readMoreUrl='https://kubelog.github.com' annotation={ANNOTATION_KUBELOG_LOCATION}/>
+            )}
 
-        { isKubelogAvailable(entity) && !loading && resources && resources.length===0 &&
-            <ComponentNotFound error={ErrorType.NO_CLUSTERS} entity={entity}/>
-        }
+            { isKubelogAvailable(entity) && !loading && resources && resources.length===0 &&
+                <ComponentNotFound error={ErrorType.NO_CLUSTERS} entity={entity}/>
+            }
 
-        { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce( (sum,cluster) => sum+cluster.data.length, 0)===0 &&
-            <ComponentNotFound error={ErrorType.NO_PODS} entity={entity}/>
-        }
+            { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce( (sum,cluster) => sum+cluster.data.length, 0)===0 &&
+                <ComponentNotFound error={ErrorType.NO_PODS} entity={entity}/>
+            }
 
-        { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce( (sum,cluster) => sum+cluster.data.length, 0)>0 &&
-            <Grid container direction="row" spacing={3}>
-                <Grid container item xs={2}>
-                    <Grid container direction='column' spacing={3}>
-                        <Grid item>
-                            <Card>
-                                <KubelogClusterList resources={resources} selectedClusterName={selectedClusterName} onSelect={selectCluster}/>
-                            </Card>
-                        </Grid>
-                        <Grid item>
-                            <Card>
-                                <KubelogOptions options={kubelogOptions} onChange={changeLogConfig} disabled={selectedNamespace==='' || paused.current}/>
-                            </Card>
-                        </Grid>
+            { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce( (sum,cluster) => sum+cluster.data.length, 0)>0 &&
+                <Grid container direction="row" spacing={3}>
+                    <Grid container item xs={2}>
+                        <Grid container direction='column' spacing={3}>
+                            <Grid item>
+                                <Card>
+                                    <KubelogClusterList resources={resources} selectedClusterName={selectedClusterName} onSelect={selectCluster}/>
+                                </Card>
+                            </Grid>
+                            <Grid item>
+                                <Card>
+                                    <KubelogOptions options={kubelogOptions} onChange={changeLogConfig} disabled={selectedNamespace==='' || paused.current}/>
+                                </Card>
+                            </Grid>
+                    </Grid>
                 </Grid>
-            </Grid>
-            <Grid item xs={10} style={{marginTop:-8}}>
+                <Grid item xs={10} style={{marginTop:-8}}>
 
-            { !selectedClusterName && 
-                <img src={KueblogLogo} alt="No cluster selected" style={{ left:'40%', marginTop:'10%', width:'20%', position:'relative' }} />
+                { !selectedClusterName && 
+                    <img src={KueblogLogo} alt="No cluster selected" style={{ left:'40%', marginTop:'10%', width:'20%', position:'relative' }} />
+                }
+
+                { selectedClusterName &&
+                    <>
+                            <Card style={{ maxHeight:'70vh'}}>
+                                <CardHeader
+                                    title={statusButtons(selectedClusterName)}
+                                    style={{marginTop:-4, marginBottom:4, flexShrink:0}}
+                                    action={actionButtons()}
+                                />
+                                
+                                <Typography style={{marginLeft:16, marginBottom:4}}>
+                                {
+                                    namespaceList.map (ns => <Chip label={ns as string} onClick={() => selectNamespace(ns as string)} size='small' color='primary' variant={ns===selectedNamespace?'default':'outlined'}/>)
+                                }
+                                </Typography>
+                                <Divider/>
+                                <CardContent style={{ overflow: 'auto' }}>
+                                    <pre ref={preRef}>
+                                        { messages.map (m => m.text+'\n') }
+                                    </pre>
+                                </CardContent>
+                            </Card>
+                    </>
+                }
+
+                </Grid>
+                </Grid>
             }
 
-            { selectedClusterName &&
-                <>
-                        <Card style={{ maxHeight:'70vh'}}>
-                            <CardHeader
-                                title={selectedClusterName}
-                                style={{marginTop:-4, marginBottom:4, flexShrink:0}}
-                                action={<>
-                                    <IconButton title="download" onClick={handleDownload}>
-                                        <DownloadIcon />
-                                    </IconButton>
-                                    <IconButton onClick={() => clickStart(kubelogOptions)} aria-label="Play" disabled={started || !paused || selectedNamespace===''} title="play">
-                                        <PlayIcon />
-                                    </IconButton>
-                                    <IconButton onClick={clickPause} aria-label="Pause" title="pause" disabled={!((started && !paused.current) && selectedNamespace!=='')}>
-                                        <PauseIcon />
-                                    </IconButton>
-                                    <IconButton onClick={clickStop} aria-label="Pause" title="pause" disabled={stopped || selectedNamespace===''}>
-                                        <StopIcon />
-                                    </IconButton>
-                                </>}
-                            />
-                            
-                            <Typography style={{marginLeft:16, marginBottom:4}}>
-                            {
-                                namespaceList.map (ns => <Chip label={ns as string} onClick={() => selectNamespace(ns as string)} size='small' color='primary' variant={ns===selectedNamespace?'default':'outlined'}/>)
-                            }
-                            </Typography>
-                            <Divider/>
-                            <CardContent style={{ overflow: 'auto' }}>
-                                <pre ref={preRef}>
-                                    { messages.map (m => m.text+'\n') }
-                                </pre>
-                            </CardContent>
-                        </Card>
-                </>
-            }
-
-            </Grid>
-            </Grid>
-        }
-
-        </Content>
-
+            </Content>
+            { showStatusDialog && <StatusLog type={statusType} />}
+        </>
     );
 };
