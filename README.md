@@ -138,6 +138,9 @@ The icons will light up in its corresponding color when a new message arrives.
 This is how it feels:
 ![status info](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/status-info.png)
 
+You can click on any status icon to see details. When the icon is colored (wherever it be info, warning or error) it means that there are mesages pending. You will see messages ordered in occurrence time.
+![status detail](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/status-detail.png)
+
 ##  Roadmap
  - ~~Add status information (received via the websocket).~~ DONE!
  - Add permissions for managing pod-view and pod-operate in a separate way.
