@@ -135,6 +135,9 @@ When the log stream starts, and all along the life of the stream (until it gets 
 
 The icons will light up in its corresponding color when a new message arrives.
 
+This is how the feel:
+![status info](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/status-info.png)
+
 ##  Roadmap
  - ~~Add status information (received via the websocket).~~ DONE!
  - Add permissions for managing pod-view and pod-operate in a separate way.
