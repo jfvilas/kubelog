@@ -67,6 +67,7 @@ If everyting is correctly configured and tagged, the user should see a list of c
           <EntityKubelogContent />
         </EntityLayout.Route>
       </EntityLayout>
+    )
     ```
 
 2. Add `backstage.io/kubernetes-id` annotation to your `catalog-info.yaml` for the entities deployed to Kubernetes whose logs you want to be 'viewable' on Backstage. This is the same annotation that the Kubernetes core plugin uses, so, maybe you already have added it to your components.
@@ -143,3 +144,4 @@ This is how it feels:
  - Add permissions for managing pod-view and pod-operate in a separate way.
  - Add ability to restart pod (depending on user permissions).
  - ~~Show all namespaces (even if the user has not access to view logs), and user would be allowed to only select permitted namespaces.~~ DONE!
+ - It is needed to allow selecting a container when a pod has more than one (has to be implemented also in backend)

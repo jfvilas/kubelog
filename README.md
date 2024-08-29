@@ -143,3 +143,4 @@ This is how it feels:
  - Add permissions for managing pod-view and pod-operate in a separate way.
  - Add ability to restart pod (depending on user permissions).
  - ~~Show all namespaces (even if the user has not access to view logs), and user would be allowed to only select permitted namespaces.~~ DONE!
+ - It is needed to allow selecting a container when a pod has more than one (has to be implemented also in backend)
