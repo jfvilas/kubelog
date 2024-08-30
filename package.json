@@ -1,6 +1,6 @@
 {
   "name": "@jfvilas/plugin-kubelog",
-  "version": "0.8.35",
+  "version": "0.8.36",
   "description": "Frontend plugin for viewing Kubernetes logs in Backstage",
   "keywords": [
     "Backstage",
