@@ -18,20 +18,25 @@ import useAsync from 'react-use/esm/useAsync';
 
 import { Content, Progress, WarningPanel } from '@backstage/core-components';
 import { useApi } from '@backstage/core-plugin-api';
-import { accessKeySerialize, ANNOTATION_KUBELOG_LOCATION, isKubelogAvailable, Pod, Resources } from '@jfvilas/plugin-kubelog-common';
+import { accessKeySerialize, ANNOTATION_KUBELOG_LOCATION, isKubelogAvailable, PodData, ClusterPods } from '@jfvilas/plugin-kubelog-common';
 import { MissingAnnotationEmptyState, useEntity } from '@backstage/plugin-catalog-react';
 
 // kubelog
 import { kubelogApiRef } from '../../api';
 import { Message } from '../../model/Message';
+
+// kubelog components
 import { ComponentNotFound, ErrorType } from '../ComponentNotFound';
+import { KubelogOptions } from '../KubelogOptions';
+import { KubelogClusterList } from '../KubelogClusterList';
+import { NamespaceChips } from '../NamespaceChips';
+import { ShowError } from '../ShowError';
+import { StatusLog } from '../StatusLog';
+
 
 // Material-UI
-import { makeStyles, Theme } from '@material-ui/core/styles';
-import { Grid, Box, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@material-ui/core';
+import { Grid } from '@material-ui/core';
 import { Card, CardHeader, CardContent } from '@material-ui/core';
-import { ListItem, ListItemText, List } from '@material-ui/core';
-import { Chip, Checkbox, FormControlLabel, Snackbar } from '@material-ui/core';
 import Divider from '@material-ui/core/Divider';
 import IconButton from '@material-ui/core/IconButton';
 import Typography from '@material-ui/core/Typography';
@@ -40,104 +45,19 @@ import Typography from '@material-ui/core/Typography';
 import PlayIcon from '@material-ui/icons/PlayArrow';
 import PauseIcon from '@material-ui/icons/Pause';
 import StopIcon from '@material-ui/icons/Stop';
-import CloseIcon from '@material-ui/icons/Close';
+import RefreshIcon from '@material-ui/icons/Refresh';
 import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
 import ErrorIcon from '@material-ui/icons/Error';
 import DownloadIcon from '@material-ui/icons/CloudDownload';
 import KueblogLogo from '../../assets/kubelog-logo.svg';
 
-
 const LOG_MAX_MESSAGES=1000;
-const useStyles = makeStyles((_theme: Theme) => ({
-  chipBox: {
-    display: 'flex',
-    marginTop: '8px',
-  },
-}));
-
-/**
- * 
- * @param resources An array of resources obtained form the backend
- * @param selectedClusterName the cluster the user just clicked
- * @param onSelect an event that is fired when the user selects another cluster
- * @returns onSelect is fired
- */
-const KubelogClusterList = (props: {
-  resources: Resources[];
-  selectedClusterName: string;
-  onSelect:(name:string|undefined) => void;
-}) => {
-
-  const classes=useStyles();
-  const { resources, selectedClusterName, onSelect } = props;
-
-  return (
-    <>
-      <CardHeader title={'Clusters'}/>
-      
-      <Divider style={{marginTop:8}}/>
-
-      <List dense>
-        {resources.map((cluster, idx) => (
-          <ListItem button key={idx} selected={selectedClusterName === cluster.name} onClick={() => onSelect(cluster.name)}>
-            <ListItemText
-              primary={cluster.name}
-              secondary={
-                <Box className={classes.chipBox}>
-                  <Typography style={{fontSize:12}}>
-                    {cluster.title}
-                  </Typography>
-                </Box>
-              }
-            />
-          </ListItem>
-        ))}
-      </List>
-    </>
-  );
-};
-
-/**
- * 
- * @param options A JSON with the curren toptions
- * @param diabled if true the options will be shown disabled
- * @returns onChange is fired sending back the new options JSON
- */
-const KubelogOptions = (props: {
-    options:any;
-    disabled:boolean;
-    onChange:(options:{}) => void;
-  }) => {
-  const [opt, setOpt] = useState<any>(props.options);
-
-  const handleChange = (change:any) => {
-    var a = {...opt,...change}
-    props.onChange(a);
-    setOpt(a);
-  }
-
-  return (
-    <>
-      <CardHeader title={'Options'}/>
-      <Divider style={{marginTop:8}}/>
-      <Grid container direction='column' spacing={0}>
-        <Grid item >
-          <FormControlLabel style={{marginLeft:8}} label="Add timestamp" control={<Checkbox checked={opt.timestamp} onChange={() => handleChange({timestamp:!opt.timestamp})} disabled={props.disabled}/>} />
-        </Grid>
-        <Grid item >
-          <FormControlLabel style={{marginLeft:8}} control={<Checkbox checked={opt.previous} onChange={() => handleChange({previous:!opt.previous})} />} label="Show previous" disabled={props.disabled}/>
-        </Grid>
-      </Grid>
-    </>
-  );
-};
-
 
 export const EntityKubelogContent = () => { 
     const { entity } = useEntity();
     const kubelogApi = useApi(kubelogApiRef);
-    const [resources, setResources] = useState<Resources[]>([]);
+    const [resources, setResources] = useState<ClusterPods[]>([]);
     const [selectedClusterName, setSelectedClusterName] = useState('');
     const [namespaceList, setNamespaceList] = useState<string[]>([]);
     const [selectedNamespace, setSelectedNamespace] = useState('');
@@ -149,15 +69,21 @@ export const EntityKubelogContent = () => {
     const [statusMessages, setStatusMessages] = useState<Message[]>([]);
     const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
     const [websocket, setWebsocket] = useState<WebSocket>();
-    const [kubelogOptions, setKubelogOptions ] = useState<any>({timestamp:false, previous:false});
-    const preRef = useRef<HTMLPreElement|null>(null);
+    //const [kubelogOptions, setKubelogOptions ] = useState<any>({timestamp:false, previous:false, follow:true});
+    const kubelogOptionsRef = useRef<any>({timestamp:false, previous:false, follow:true});
     const [showStatusDialog, setShowStatusDialog] = useState(false);
     const [statusType, setStatusType] = useState('');
-
+    const preRef = useRef<HTMLPreElement|null>(null);
+    const lastRef = useRef<HTMLPreElement|null>(null);
     const { loading, error } = useAsync ( async () => {
-      var data = await kubelogApi.getResources(entity);
-      setResources(data);
+      //var data = await kubelogApi.getResources(entity);
+      loadData();
     });
+
+    const loadData = async () => {
+        var data = await kubelogApi.requestAccess(entity,['view','restart']);
+        setResources(data);
+    }
 
     const clickStart = (options:any) => {
       if (!paused.current) {
@@ -221,7 +147,6 @@ export const EntityKubelogContent = () => {
         }
 
         var msg=e as Message;
-        console.log(msg);
         switch (msg.type) {
             case 'info':
             case 'warning':
@@ -237,6 +162,7 @@ export const EntityKubelogContent = () => {
                         while (prev.length>LOG_MAX_MESSAGES-1) {
                             prev.splice(0,1);
                         }
+                        if (kubelogOptionsRef.current.follow && lastRef.current) lastRef.current.scrollIntoView({ behavior: 'instant', block: 'start' });
                         return [ ...prev, msg ]
                     });
                 }        
@@ -254,7 +180,7 @@ export const EntityKubelogContent = () => {
             //+++ setShowError(msg.text);
             return;
         }
-        var pod=(cluster.data as Pod[]).find(p => p.namespace===selectedNamespace);
+        var pod=(cluster.data as PodData[]).find(p => p.namespace===selectedNamespace);
 
         if (!pod) {
             //+++ setShowError(msg.text);
@@ -262,7 +188,7 @@ export const EntityKubelogContent = () => {
         }
         console.log(`WS connected`);
         var payload={ 
-            accessKey:accessKeySerialize(pod.accessKey!),
+            accessKey:accessKeySerialize(pod.accessKey || pod.viewAccessKey),
             scope:'filter',
             namespace:selectedNamespace,
             set:'',
@@ -272,7 +198,6 @@ export const EntityKubelogContent = () => {
             previous:options.previous,
             maxMessages:LOG_MAX_MESSAGES
         };
-        console.log(JSON.stringify(payload));
         ws.send(JSON.stringify(payload));
     }
 
@@ -293,6 +218,9 @@ export const EntityKubelogContent = () => {
 
     const websocketOnClose = (_event:any) => {
       console.log(`WS disconnected`);
+      setStarted(false);
+      paused.current=false;
+      setStopped(true);
     }
 
     const stopLogViewer = () => {
@@ -301,102 +229,20 @@ export const EntityKubelogContent = () => {
     }
 
     const changeLogConfig = (options:any) => {
-      setKubelogOptions(options);
-      if (started) {
-        clickStop();
-        clickStart(options);
-      }
-    }
-
-    const actionButtons = () => {
-        return <>
-            <IconButton title="download" onClick={handleDownload}>
-                <DownloadIcon />
-            </IconButton>
-            <IconButton onClick={() => clickStart(kubelogOptions)} aria-label="Play" disabled={started || !paused || selectedNamespace===''} title="play">
-                <PlayIcon />
-            </IconButton>
-            <IconButton onClick={clickPause} aria-label="Pause" title="pause" disabled={!((started && !paused.current) && selectedNamespace!=='')}>
-                <PauseIcon />
-            </IconButton>
-            <IconButton onClick={clickStop} aria-label="Pause" title="pause" disabled={stopped || selectedNamespace===''}>
-                <StopIcon />
-            </IconButton>
-        </>;
-    }
-
-    const StatusLog = (props:{type:string}) => {
-        const clear = (type:string) => {
-          setStatusMessages(statusMessages.filter(m=> m.type!==type));
-          setShowStatusDialog(false);
+        console.log(options);
+        //setKubelogOptions(options);
+        kubelogOptionsRef.current=options;
+        if (started) {
+            clickStop();
+            clickStart(options);
         }
-
-        return (
-            <Dialog open={true}>
-                <DialogTitle>
-                    Stauts: {props.type} 
-                </DialogTitle>
-                <DialogContent>
-                    { statusMessages.filter(m => m.type===props.type).map(m => <Typography>{m.timestamp}&nbsp;&nbsp;&nbsp;&nbsp;{m.text}</Typography>) }
-                </DialogContent>
-                <DialogActions>
-                  <Button onClick={() => clear(props.type)} color='primary' variant='contained'>Clear</Button>
-                  <Button onClick={() => setShowStatusDialog(false)} color='primary' variant='contained'>Close</Button>
-                </DialogActions>
-            </Dialog>
-        )
-    }
-
-    /**
-     * 
-     * @returns a list of JSX elements containing Chips with namespaces, disabling (color:red) those which the user has no accessKey for.
-     */
-    const ShowNamespaces = () => {
-      var cluster=resources.find(cluster => cluster.name===selectedClusterName);
-      return (<>
-        {
-          namespaceList.map (ns => {
-            var existsAccessKey = cluster?.data.some(p => p.namespace===ns && p.accessKey);
-            if (existsAccessKey)
-              return <Chip label={ns as string} onClick={() => selectNamespace(ns as string)} size='small' color='primary' variant={ns===selectedNamespace?'default':'outlined'}/>
-            else
-              return <Chip label={ns as string} size='small' color='secondary' variant={'outlined'}/>
-          })
-        }
-      </>)
-    }
-
-    const statusButtons = (title:string) => {
-        const show = (type:string) => {
-            setShowStatusDialog(true);
-            setStatusType(type);
-        }
-        
-        return (
-        <Grid container direction='row' >
-            <Grid item>
-                <Typography variant='h5'>{title}</Typography>
-            </Grid>
-            <Grid item style={{marginTop:'-8px'}}>
-            <IconButton title="info" disabled={!statusMessages.some(m=>m.type==='info')} onClick={() => show('info')}>
-                <InfoIcon style={{ color:statusMessages.some(m=>m.type==='info')?'blue':'gray'}}/>
-            </IconButton>
-            <IconButton title="warning" disabled={!statusMessages.some(m=>m.type==='warning')} onClick={() => show('warning')} style={{marginLeft:'-16px'}}>
-                <WarningIcon style={{ color:statusMessages.some(m=>m.type==='warning')?'gold':'gray'}}/>
-            </IconButton>
-            <IconButton title="error" disabled={!statusMessages.some(m=>m.type==='error')} onClick={() => show('error')} style={{marginLeft:'-16px'}}>
-                <ErrorIcon style={{ color:statusMessages.some(m=>m.type==='error')?'red':'gray'}}/>
-            </IconButton>
-            </Grid>
-        </Grid>
-        );
     }
 
     const handleDownload = () => {
       var content=preRef.current!.innerHTML.replaceAll('<pre>','').replaceAll('</pre>','\n');
       var filename=selectedClusterName+'-'+selectedNamespace+'-'+entity.metadata.name+'.txt';
       var mimeType:string='text/plain';
-
+  
       const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -407,92 +253,149 @@ export const EntityKubelogContent = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
+  
+    const actionButtons = () => {
+        return <>
+            <IconButton title='Download' onClick={handleDownload}>
+                <DownloadIcon />
+            </IconButton>
+            <IconButton onClick={() => clickStart(kubelogOptionsRef.current)} title="Play" disabled={started || !paused || selectedNamespace===''}>
+                <PlayIcon />
+            </IconButton>
+            <IconButton onClick={clickPause} title="Pause" disabled={!((started && !paused.current) && selectedNamespace!=='')}>
+                <PauseIcon />
+            </IconButton>
+            <IconButton onClick={clickStop} title="Stop" disabled={stopped || selectedNamespace===''}>
+                <StopIcon />
+            </IconButton>
+        </>;
+    }
 
-    return (
-        <>
-            <Content>
-            { showError!=='' && 
-                <Snackbar 
-                    message={`An error has ocurred: ${showError}`}
-                    open={true}
-                    autoHideDuration={3000}
-                    anchorOrigin={{ vertical:'top', horizontal:'center' }}
-                    action={ 
-                        <IconButton size="small" aria-label="close" color="inherit" onClick={() => setShowError('')}>
-                            <CloseIcon fontSize="small" />
-                        </IconButton>
-                    }>
-                </Snackbar>
+    const restartPod = () => {
+        var cluster=resources.find(cluster => cluster.name===selectedClusterName);
+        if (cluster) {
+            var pod=(cluster.data as PodData[]).find(p => p.namespace===selectedNamespace)
+            var url=cluster.url+`/managecluster/restartpod/${pod?.namespace}/${pod?.name}`
+            var fetchOptions= {
+                method:'POST',
+                headers: {
+                    Authorization: 'Bearer ' + accessKeySerialize (pod?.restartAccessKey!),
+                    'Content-Type':'application/json',
+                }
             }
+            fetch (url, fetchOptions)
+        }
+    }
 
-            { loading && <Progress/> }
+    const statusButtons = (title:string) => {
+        const show = (type:string) => {
+            setShowStatusDialog(true);
+            setStatusType(type);
+        }
 
-            {!isKubelogAvailable(entity) && !loading && error && (
-                <WarningPanel title={'An error has ocurred while obtaining data from kuebernetes clusters.'} message={error?.message} />
-            )}
+        var cluster=resources.find(cluster => cluster.name===selectedClusterName);
+        var existsRestartAccessKey = cluster?.data.some(p => p.namespace===selectedNamespace && p.restartAccessKey);
 
-            {!isKubelogAvailable(entity) && !loading && (
-                <MissingAnnotationEmptyState readMoreUrl='https://kubelog.github.com' annotation={ANNOTATION_KUBELOG_LOCATION}/>
-            )}
+        return (
+            <Grid container direction='row' >
+                <Grid item>
+                    <Typography variant='h5'>{title}</Typography>
+                </Grid>
+                <Grid item style={{marginTop:'-8px'}}>
+                <IconButton title="Restart pod" disabled={!existsRestartAccessKey} onClick={restartPod}>
+                    <RefreshIcon/>
+                </IconButton>
+                <IconButton title="info" disabled={!statusMessages.some(m=>m.type==='info')} onClick={() => show('info')}>
+                    <InfoIcon style={{ color:statusMessages.some(m=>m.type==='info')?'blue':'#BDBDBD'}}/>
+                </IconButton>
+                <IconButton title="warning" disabled={!statusMessages.some(m=>m.type==='warning')} onClick={() => show('warning')} style={{marginLeft:'-16px'}}>
+                    <WarningIcon style={{ color:statusMessages.some(m=>m.type==='warning')?'gold':'#BDBDBD'}}/>
+                </IconButton>
+                <IconButton title="error" disabled={!statusMessages.some(m=>m.type==='error')} onClick={() => show('error')} style={{marginLeft:'-16px'}}>
+                    <ErrorIcon style={{ color:statusMessages.some(m=>m.type==='error')?'red':'#BDBDBD'}}/>
+                </IconButton>
+                </Grid>
+            </Grid>
+        )
+    }
 
-            { isKubelogAvailable(entity) && !loading && resources && resources.length===0 &&
-                <ComponentNotFound error={ErrorType.NO_CLUSTERS} entity={entity}/>
-            }
+    const statusClear = (type:string) => {
+        console.log('clear',type);
+        setStatusMessages(statusMessages.filter(m=> m.type!==type));
+        setShowStatusDialog(false);
+    }
+    
+    return (<>
+        <Content>
+        { showError!=='' && <ShowError message={showError} onClose={() => setShowError('')}/> }
 
-            { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce( (sum,cluster) => sum+cluster.data.length, 0)===0 &&
-                <ComponentNotFound error={ErrorType.NO_PODS} entity={entity}/>
-            }
+        { loading && <Progress/> }
 
-            { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce( (sum,cluster) => sum+cluster.data.length, 0)>0 &&
-                <Grid container direction="row" spacing={3}>
-                    <Grid container item xs={2}>
-                        <Grid container direction='column' spacing={3}>
-                            <Grid item>
-                                <Card>
-                                    <KubelogClusterList resources={resources} selectedClusterName={selectedClusterName} onSelect={selectCluster}/>
-                                </Card>
-                            </Grid>
-                            <Grid item>
-                                <Card>
-                                    <KubelogOptions options={kubelogOptions} onChange={changeLogConfig} disabled={selectedNamespace==='' || paused.current}/>
-                                </Card>
-                            </Grid>
+        {!isKubelogAvailable(entity) && !loading && error && (
+            <WarningPanel title={'An error has ocurred while obtaining data from kuebernetes clusters.'} message={error?.message} />
+        )}
+
+        {!isKubelogAvailable(entity) && !loading && (
+            <MissingAnnotationEmptyState readMoreUrl='https://github.com/jfvilas/kubelog' annotation={ANNOTATION_KUBELOG_LOCATION}/>
+        )}
+
+        { isKubelogAvailable(entity) && !loading && resources && resources.length===0 &&
+            <ComponentNotFound error={ErrorType.NO_CLUSTERS} entity={entity}/>
+        }
+
+        { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce((sum,cluster) => sum+cluster.data.length, 0)===0 &&
+            <ComponentNotFound error={ErrorType.NO_PODS} entity={entity}/>
+        }
+
+        { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce((sum,cluster) => sum+cluster.data.length, 0)>0 &&
+            <Grid container direction="row" spacing={3}>
+                <Grid container item xs={2}>
+                    <Grid container direction='column' spacing={3}>
+                        <Grid item>
+                            <Card>
+                                <KubelogClusterList resources={resources} selectedClusterName={selectedClusterName} onSelect={selectCluster}/>
+                            </Card>
+                        </Grid>
+                        <Grid item>
+                            <Card>
+                                <KubelogOptions options={kubelogOptionsRef.current} onChange={changeLogConfig} disabled={selectedNamespace==='' || paused.current}/>
+                            </Card>
+                        </Grid>
                     </Grid>
                 </Grid>
+
                 <Grid item xs={10} style={{marginTop:-8}}>
 
-                { !selectedClusterName && 
-                    <img src={KueblogLogo} alt="No cluster selected" style={{ left:'40%', marginTop:'10%', width:'20%', position:'relative' }} />
-                }
+                    { !selectedClusterName && 
+                        <img src={KueblogLogo} alt="No cluster selected" style={{ left:'40%', marginTop:'10%', width:'20%', position:'relative' }} />
+                    }
 
-                { selectedClusterName &&
-                    <>
-                            <Card style={{ maxHeight:'70vh'}}>
-                                <CardHeader
-                                    title={statusButtons(selectedClusterName)}
-                                    style={{marginTop:-4, marginBottom:4, flexShrink:0}}
-                                    action={actionButtons()}
-                                />
-                                
-                                <Typography style={{marginLeft:16, marginBottom:4}}>
-                                  <ShowNamespaces/>
-                                </Typography>
-                                <Divider/>
-                                <CardContent style={{ overflow: 'auto' }}>
-                                    <pre ref={preRef}>
-                                        { messages.map (m => m.text+'\n') }
-                                    </pre>
-                                </CardContent>
-                            </Card>
-                    </>
-                }
+                    { selectedClusterName && <>
+                        <Card style={{ maxHeight:'70vh'}}>
+                            <CardHeader
+                                title={statusButtons(selectedClusterName)}
+                                style={{marginTop:-4, marginBottom:4, flexShrink:0}}
+                                action={actionButtons()}
+                            />
+                            
+                            <Typography style={{marginLeft:16, marginBottom:4}}>
+                                <NamespaceChips namespaceList={namespaceList} onSelect={selectNamespace} resources={resources} selectedClusterName={selectedClusterName} selectedNamespace={selectedNamespace}/>
+                            </Typography>
+                            <Divider/>
+                            <CardContent style={{ overflow: 'auto' }}>
+                                <pre ref={preRef}>
+                                    { messages.map (m => m.text+'\n') }
+                                </pre>
+                                <span ref={lastRef}></span>
+                            </CardContent>
+                        </Card>
+                    </>}
 
                 </Grid>
-                </Grid>
-            }
+            </Grid>
+        }
+        </Content>
 
-            </Content>
-            { showStatusDialog && <StatusLog type={statusType} />}
-        </>
-    );
-};
+        { showStatusDialog && <StatusLog type={statusType} onClose={() => setShowStatusDialog(false)} statusMessages={statusMessages} onClear={statusClear}/>}
+    </>)
+}
