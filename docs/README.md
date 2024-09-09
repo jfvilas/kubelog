@@ -1,22 +1,27 @@
 # Kubelog Plugin
-
-This package is a Backstage plugin for viewing Kubernetes logs via Kwirth.
+This package is a Backstage plugin for **viewing logs** and perform **basic operations** in Kubernetes via Kwirth.
 
 This Backstage plugin allows you to view Kubernetes logs associated to your entity directly inside your Backstage instance. It's very important to understand that for this plugin to work you need to install Kwirth on your Kubernetes cluster, that is, this plugin is just another front end for [Kwirth](https://jfvilas.github.io/kwirth).
+
+Starting from Kubelog **version 0.9** you will have the ability to **restart pods** right from Backstage. This capability is not designed to substitute your operation tools, it is just a way for your developers to self-solve restarting-pod problems without the complexity of giving them access to Lens, K9s, Headlamp or kubectl.
 
 Kwirth is a really-easy-to-use log exporting system for Kubernetes that runs in only one pod (*no database is needed*). Refer to Kwirth GitHub project for [info on installation](https://github.com/jfvilas/kwirth?tab=readme-ov-file#installation). Kwirth installation is *one command away* from you.
 
 You can access [Kwirth project here](https://github.com/jfvilas/kwirth).
 
-## What is this plugin for?
-This Backstage plugin add Backstage a feature for browsing Kubernetes logs of entities directly inside Backstage frontend application. The plugin will be enabled for any entity taht is corectly tagged (according to Backstage Kubernetes core feature) and its correpsonding Kubernetes resources are found on any of the clusters that have been added to Backstage.
 
-When Kubelog is correctly installed and configured you will have a chance to view Kubernetes logs on your Backstage like in this sample:
+## What is this plugin for?
+This Backstage plugin add Backstage a feature for browsing Kubernetes logs of entities directly inside Backstage frontend application. The plugin will be enabled for any entity that is corectly tagged (according to Backstage Kubernetes core feature) and its correpsonding Kubernetes resources are found on any of the clusters that have been added to Backstage.
+
+In addition, Backstage users can **restart pods** if they are allowed to (according to Kubelog permission).
+
+When Kubelog is correctly installed and configured, it is possible to view Kubernetes logs on your Backstage like in this sample:
 
 ![kubelog-running](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/kubelog-running.png)
 
 This frontend plugin includes just the visualization of log information. All needed configuration, and specially **permission settings**, are done in the backend plugin and the app-config YAML. You can restrict access to pods, namespaces, clusters, etc... by configuring permissions to be applied by the backend plugin.
 
+Th ability to restart pods is also configured in the app-config (YAML, env or whatever), and **restartig permissions are set differently than viewing permissions**.
 The backend plugin is the only responsible for configuration and permissions, all the capabilities related with log viewing are implemented in the frontend plugin, who establishes the connections to the corresponding Kwirth instances.
 
 
@@ -28,10 +33,11 @@ Let's explain this by following a user working sequence:
 3. When the user clicks on KUBELOG the frontend plugin sends a request to the backend plugin asking for logging information on several Kubernetes clusters.
 4. The backend plugin sends requests to the Kwirth instances that are running on all the clusters added to Backstage. These requests ask for the following: *'Tell me all the pods that are labeled with the kubernetes-id label and do correspond with the entity I'm looking for'*. In response to this query, each Kwirth instance answers with a list of pods and the namespaces where they are running.
 5. The backend plugin check the permissions of the connected user and prunes the pods list removing the ones that the user has not access to.
-6. With the final pod list, the backend plugin sends requests to the Kwirth instances on the clusters asking for an API Key specific for viewing the pod logs.
-7. With all this information, the backend builds a unique response containing all the pods the user have access to, and the API keys needed to access those logs.
+6. With the final pod list, the backend plugin sends requests to the Kwirth instances on the clusters asking for API Keys specific for viewing and/or restarting pods.
+7. With all this information, the backend builds a unique response containing all the pods the user have access to, and all the API keys needed to access (wherever it be log-viewing or pod-restarting) those logs.
 
 If everyting is correctly configured and tagged, the user should see a list of clusters. When selecting a cluster, the user should see a list of namespaces where the entity is running.
+
 
 ## Installation
 1. Install corresponding Backstage backend plugin [more information here](https://www.npmjs.com/package/@jfvilas/plugin-kubelog-backend).
@@ -47,9 +53,9 @@ If everyting is correctly configured and tagged, the user should see a list of c
 
 4. Restart your Backstage instance.
 
-## Configuration: Entity Pages
 
-1. Add the plugin as a tab to your Entity pages:
+## Configuration: Entity Pages
+1. Add the plugin as a tab in your Entity pages:
 
     Firstly, import the plugin module.
     ```typescript
@@ -59,7 +65,7 @@ If everyting is correctly configured and tagged, the user should see a list of c
 
     Then, add a tab to your EntityPage (the 'if' is optional, you can keep the 'Kubelog' tab always visible if you prefer to do it that way).
     ````jsx
-    // Note: Add to any other Pages as well (e.g. defaultEntityPage and webSiteEntityPage)
+    // Note: Add to any other Pages as well (e.g. defaultEntityPage or webSiteEntityPage, for example)
     const serviceEntityPage = (
       <EntityLayout>
         {/* other tabs... */}
@@ -90,7 +96,7 @@ If everyting is correctly configured and tagged, the user should see a list of c
     spec:
       selector:
         matchLabels:
-          app: 'ijkl'
+          app: ijkl
       template:
         metadata:
           name: 'ijkl-pod'
@@ -138,6 +144,17 @@ The icons will light up in its corresponding color when a new message arrives.
 
 This is how it feels:
 ![status info](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/status-info.png)
+
+
+## Restarting pods
+If your Backstage administrator has configured **Restarting** permissions and you are permitted, you would see an enabled "Restart Pod" button just at the right side of the cluster name (between the cluster name and the status icons).
+
+![status info](https://raw.githubusercontent.com/jfvilas/kubelog/master/images/restart-pod.png)
+
+When you are not allowed to restart a pod, you can see the icon but you cannot click it. Conversely, if you are allowed you can click the button and the pod (in the *namespace you have selected*) will be restarted.
+
+Please take into account that you may be allowed in one namespace but not in another one, or you may be allowed to restart pods on a cluster but not on another one. The restart icon will be enabled or disabled according to your pod, namespace and cluster permissions.
+
 
 ##  Roadmap
  - ~~Add status information (received via the websocket).~~ DONE!

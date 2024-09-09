@@ -76,14 +76,10 @@ export const EntityKubelogContent = () => {
     const preRef = useRef<HTMLPreElement|null>(null);
     const lastRef = useRef<HTMLPreElement|null>(null);
     const { loading, error } = useAsync ( async () => {
-      //var data = await kubelogApi.getResources(entity);
-      loadData();
-    });
-
-    const loadData = async () => {
-        var data = await kubelogApi.requestAccess(entity,['view','restart']);
-        setResources(data);
-    }
+      //var data = await kubelogApi.getResources(entity);  // old endpoint (no restart supported)
+      var data = await kubelogApi.requestAccess(entity,['view','restart']);
+      setResources(data);
+  });
 
     const clickStart = (options:any) => {
       if (!paused.current) {
@@ -327,73 +323,73 @@ export const EntityKubelogContent = () => {
     
     return (<>
         <Content>
-        { showError!=='' && <ShowError message={showError} onClose={() => setShowError('')}/> }
+            { showError!=='' && <ShowError message={showError} onClose={() => setShowError('')}/> }
 
-        { loading && <Progress/> }
+            { loading && <Progress/> }
 
-        {!isKubelogAvailable(entity) && !loading && error && (
-            <WarningPanel title={'An error has ocurred while obtaining data from kuebernetes clusters.'} message={error?.message} />
-        )}
+            {!isKubelogAvailable(entity) && !loading && error && (
+                <WarningPanel title={'An error has ocurred while obtaining data from kuebernetes clusters.'} message={error?.message} />
+            )}
 
-        {!isKubelogAvailable(entity) && !loading && (
-            <MissingAnnotationEmptyState readMoreUrl='https://github.com/jfvilas/kubelog' annotation={ANNOTATION_KUBELOG_LOCATION}/>
-        )}
+            {!isKubelogAvailable(entity) && !loading && (
+                <MissingAnnotationEmptyState readMoreUrl='https://github.com/jfvilas/kubelog' annotation={ANNOTATION_KUBELOG_LOCATION}/>
+            )}
 
-        { isKubelogAvailable(entity) && !loading && resources && resources.length===0 &&
-            <ComponentNotFound error={ErrorType.NO_CLUSTERS} entity={entity}/>
-        }
+            { isKubelogAvailable(entity) && !loading && resources && resources.length===0 &&
+                <ComponentNotFound error={ErrorType.NO_CLUSTERS} entity={entity}/>
+            }
 
-        { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce((sum,cluster) => sum+cluster.data.length, 0)===0 &&
-            <ComponentNotFound error={ErrorType.NO_PODS} entity={entity}/>
-        }
+            { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce((sum,cluster) => sum+cluster.data.length, 0)===0 &&
+                <ComponentNotFound error={ErrorType.NO_PODS} entity={entity}/>
+            }
 
-        { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce((sum,cluster) => sum+cluster.data.length, 0)>0 &&
-            <Grid container direction="row" spacing={3}>
-                <Grid container item xs={2}>
-                    <Grid container direction='column' spacing={3}>
-                        <Grid item>
-                            <Card>
-                                <KubelogClusterList resources={resources} selectedClusterName={selectedClusterName} onSelect={selectCluster}/>
-                            </Card>
-                        </Grid>
-                        <Grid item>
-                            <Card>
-                                <KubelogOptions options={kubelogOptionsRef.current} onChange={changeLogConfig} disabled={selectedNamespace==='' || paused.current}/>
-                            </Card>
+            { isKubelogAvailable(entity) && !loading && resources && resources.length>0 && resources.reduce((sum,cluster) => sum+cluster.data.length, 0)>0 &&
+                <Grid container direction="row" spacing={3}>
+                    <Grid container item xs={2}>
+                        <Grid container direction='column' spacing={3}>
+                            <Grid item>
+                                <Card>
+                                    <KubelogClusterList resources={resources} selectedClusterName={selectedClusterName} onSelect={selectCluster}/>
+                                </Card>
+                            </Grid>
+                            <Grid item>
+                                <Card>
+                                    <KubelogOptions options={kubelogOptionsRef.current} onChange={changeLogConfig} disabled={selectedNamespace==='' || paused.current}/>
+                                </Card>
+                            </Grid>
                         </Grid>
                     </Grid>
+
+                    <Grid item xs={10} style={{marginTop:-8}}>
+
+                        { !selectedClusterName && 
+                            <img src={KueblogLogo} alt="No cluster selected" style={{ left:'40%', marginTop:'10%', width:'20%', position:'relative' }} />
+                        }
+
+                        { selectedClusterName && <>
+                            <Card style={{ maxHeight:'70vh'}}>
+                                <CardHeader
+                                    title={statusButtons(selectedClusterName)}
+                                    style={{marginTop:-4, marginBottom:4, flexShrink:0}}
+                                    action={actionButtons()}
+                                />
+                                
+                                <Typography style={{marginLeft:16, marginBottom:4}}>
+                                    <NamespaceChips namespaceList={namespaceList} onSelect={selectNamespace} resources={resources} selectedClusterName={selectedClusterName} selectedNamespace={selectedNamespace}/>
+                                </Typography>
+                                <Divider/>
+                                <CardContent style={{ overflow: 'auto' }}>
+                                    <pre ref={preRef}>
+                                        { messages.map (m => m.text+'\n') }
+                                    </pre>
+                                    <span ref={lastRef}></span>
+                                </CardContent>
+                            </Card>
+                        </>}
+
+                    </Grid>
                 </Grid>
-
-                <Grid item xs={10} style={{marginTop:-8}}>
-
-                    { !selectedClusterName && 
-                        <img src={KueblogLogo} alt="No cluster selected" style={{ left:'40%', marginTop:'10%', width:'20%', position:'relative' }} />
-                    }
-
-                    { selectedClusterName && <>
-                        <Card style={{ maxHeight:'70vh'}}>
-                            <CardHeader
-                                title={statusButtons(selectedClusterName)}
-                                style={{marginTop:-4, marginBottom:4, flexShrink:0}}
-                                action={actionButtons()}
-                            />
-                            
-                            <Typography style={{marginLeft:16, marginBottom:4}}>
-                                <NamespaceChips namespaceList={namespaceList} onSelect={selectNamespace} resources={resources} selectedClusterName={selectedClusterName} selectedNamespace={selectedNamespace}/>
-                            </Typography>
-                            <Divider/>
-                            <CardContent style={{ overflow: 'auto' }}>
-                                <pre ref={preRef}>
-                                    { messages.map (m => m.text+'\n') }
-                                </pre>
-                                <span ref={lastRef}></span>
-                            </CardContent>
-                        </Card>
-                    </>}
-
-                </Grid>
-            </Grid>
-        }
+            }
         </Content>
 
         { showStatusDialog && <StatusLog type={statusType} onClose={() => setShowStatusDialog(false)} statusMessages={statusMessages} onClear={statusClear}/>}
