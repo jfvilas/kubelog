@@ -161,5 +161,6 @@ Please take into account that you may be allowed in one namespace but not in ano
  - ~~Add permissions for managing pod-view and pod-operate in a separate way.~~ DONE!
  - ~~Add ability to restart pod (depending on user permissions).~~ DONE!
  - ~~Show all namespaces (even if the user has not access to view logs), and user would be allowed to only select permitted namespaces.~~ DONE!
- - It is needed to allow selecting a container when a pod has more than one (has to be implemented also in backend)
+ - Add a third permission layer: 'cluster' (restrict which clusters a user can view)
  - Add metrics of pod execution (and permissions to view them)
+ - It is needed to allow selecting a container when a pod has more than one (has to be implemented also in backend)
