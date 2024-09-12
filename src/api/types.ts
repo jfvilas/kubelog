@@ -19,6 +19,7 @@ import { createApiRef } from '@backstage/core-plugin-api';
 export interface KubelogApi {
     getResources(entity:Entity): Promise<any>;
     requestAccess(entity:Entity, scopes:string[]): Promise<any>;
+    getVersion(): Promise<any>;
 }
 
 export const kubelogApiRef = createApiRef<KubelogApi>({

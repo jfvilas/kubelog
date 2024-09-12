@@ -37,6 +37,24 @@ export class KubelogClient implements KubelogApi {
      * @param entity 
      * @returns an array of clusters (with their correpsonding info) and a pod list for each, where the entity has been dicovered
      */
+    async getVersion(): Promise<string> {
+        try {
+            const baseUrl = await this.discoveryApi.getBaseUrl('kubelog');
+            const targetUrl = `${baseUrl}/version`;
+
+            const result = await this.fetchApi.fetch(targetUrl);
+            const data = await result.json();
+
+            if (!result.ok) {
+                throw new Error(`getVersion error: not ok`);
+            }
+            return data.version;
+        }
+        catch (err) {
+            throw new Error(`getVersion error: ${err}`);
+        }
+    }
+
     async getResources(entity:Entity): Promise<ClusterPods> {
         try {
             const baseUrl = await this.discoveryApi.getBaseUrl('kubelog');

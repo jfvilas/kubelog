@@ -50,7 +50,8 @@ import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
 import ErrorIcon from '@material-ui/icons/Error';
 import DownloadIcon from '@material-ui/icons/CloudDownload';
-import KueblogLogo from '../../assets/kubelog-logo.svg';
+import KubelogLogo from '../../assets/kubelog-logo.svg';
+import { versionGreatOrEqualThan } from '@jfvilas/plugin-kubelog-backend/src/model/KubelogStaticData';
 
 const LOG_MAX_MESSAGES=1000;
 
@@ -69,14 +70,15 @@ export const EntityKubelogContent = () => {
     const [statusMessages, setStatusMessages] = useState<Message[]>([]);
     const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
     const [websocket, setWebsocket] = useState<WebSocket>();
-    //const [kubelogOptions, setKubelogOptions ] = useState<any>({timestamp:false, previous:false, follow:true});
     const kubelogOptionsRef = useRef<any>({timestamp:false, previous:false, follow:true});
     const [showStatusDialog, setShowStatusDialog] = useState(false);
     const [statusType, setStatusType] = useState('');
     const preRef = useRef<HTMLPreElement|null>(null);
     const lastRef = useRef<HTMLPreElement|null>(null);
+    const [ backendVersion, setBackendVersion ] = useState<string>('');
     const { loading, error } = useAsync ( async () => {
       //var data = await kubelogApi.getResources(entity);  // old endpoint (no restart supported)
+      if (backendVersion==='') setBackendVersion(await kubelogApi.getVersion());
       var data = await kubelogApi.requestAccess(entity,['view','restart']);
       setResources(data);
   });
@@ -252,7 +254,7 @@ export const EntityKubelogContent = () => {
   
     const actionButtons = () => {
         return <>
-            <IconButton title='Download' onClick={handleDownload}>
+            <IconButton title='Download' onClick={handleDownload} disabled={messages.length<=1}>
                 <DownloadIcon />
             </IconButton>
             <IconButton onClick={() => clickStart(kubelogOptionsRef.current)} title="Play" disabled={started || !paused || selectedNamespace===''}>
@@ -298,9 +300,11 @@ export const EntityKubelogContent = () => {
                     <Typography variant='h5'>{title}</Typography>
                 </Grid>
                 <Grid item style={{marginTop:'-8px'}}>
-                <IconButton title="Restart pod" disabled={!existsRestartAccessKey} onClick={restartPod}>
-                    <RefreshIcon/>
-                </IconButton>
+                { versionGreatOrEqualThan(backendVersion,'0.9.0') &&
+                    <IconButton title="Restart pod" disabled={!existsRestartAccessKey} onClick={restartPod}>
+                        <RefreshIcon/>
+                    </IconButton>
+                }
                 <IconButton title="info" disabled={!statusMessages.some(m=>m.type==='info')} onClick={() => show('info')}>
                     <InfoIcon style={{ color:statusMessages.some(m=>m.type==='info')?'blue':'#BDBDBD'}}/>
                 </IconButton>
@@ -363,7 +367,7 @@ export const EntityKubelogContent = () => {
                     <Grid item xs={10} style={{marginTop:-8}}>
 
                         { !selectedClusterName && 
-                            <img src={KueblogLogo} alt="No cluster selected" style={{ left:'40%', marginTop:'10%', width:'20%', position:'relative' }} />
+                            <img src={KubelogLogo} alt="No cluster selected" style={{ left:'40%', marginTop:'10%', width:'20%', position:'relative' }} />
                         }
 
                         { selectedClusterName && <>

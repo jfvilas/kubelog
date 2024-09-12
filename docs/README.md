@@ -164,3 +164,4 @@ Please take into account that you may be allowed in one namespace but not in ano
  - Add a third permission layer: 'cluster' (restrict which clusters a user can view)
  - Add metrics of pod execution (and permissions to view them)
  - It is needed to allow selecting a container when a pod has more than one (has to be implemented also in backend)
+ - Validate kwirth configs (rul's, api keys...) when kubelog-backend is initialized
