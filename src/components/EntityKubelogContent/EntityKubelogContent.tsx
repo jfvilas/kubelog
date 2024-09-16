@@ -51,7 +51,7 @@ import WarningIcon from '@material-ui/icons/Warning';
 import ErrorIcon from '@material-ui/icons/Error';
 import DownloadIcon from '@material-ui/icons/CloudDownload';
 import KubelogLogo from '../../assets/kubelog-logo.svg';
-
+import { LogConfig } from '../../model/LogConfig';
 
 const LOG_MAX_MESSAGES=1000;
 
@@ -202,13 +202,15 @@ export const EntityKubelogContent = () => {
             return;
         }
         console.log(`WS connected`);
-        var payload={ 
+        var payload:LogConfig={ 
             accessKey:accessKeySerialize(pod.accessKey || pod.viewAccessKey),
-            scope:'filter',
+            scope:'view',
             namespace:selectedNamespace,
             set:'',
+            group:'',
             pod:pod.name,
             container:'',
+            view:'pod',
             timestamp:options.timestamp,
             previous:options.previous,
             maxMessages:LOG_MAX_MESSAGES
@@ -217,18 +219,24 @@ export const EntityKubelogContent = () => {
     }
 
     const startLogViewer = (options:any) => {
-      var cluster=resources.find(cluster => cluster.name===selectedClusterName);
-      if (!cluster) {
-        //+++ show wargning
-        return;
-      }
+        var cluster=resources.find(cluster => cluster.name===selectedClusterName);
+        if (!cluster) {
+            //+++ show wargning
+            return;
+        }
 
-      var ws = new WebSocket(cluster.url);
-      ws.onopen = () => websocketOnOpen(ws, options); 
-      ws.onmessage = (event) => websocketOnChunk(event);
-      ws.onclose = (event) => websocketOnClose(event);
-      setWebsocket(ws);
-      setMessages([]);
+        try {
+            var ws = new WebSocket(cluster.url);
+            ws.onopen = () => websocketOnOpen(ws, options); 
+            ws.onmessage = (event) => websocketOnChunk(event);
+            ws.onclose = (event) => websocketOnClose(event);
+            setWebsocket(ws);
+            setMessages([]);
+        }
+        catch (err) {
+            setMessages([new Message(`Error opening log stream: ${err}`)]);
+        }
+
     }
 
     const websocketOnClose = (_event:any) => {
@@ -244,11 +252,9 @@ export const EntityKubelogContent = () => {
     }
 
     const changeLogConfig = (options:any) => {
-        console.log(options);
-        //setKubelogOptions(options);
         kubelogOptionsRef.current=options;
         if (started) {
-            clickStop();
+            //clickStop();
             clickStart(options);
         }
     }
