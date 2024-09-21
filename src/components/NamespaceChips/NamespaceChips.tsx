@@ -1,9 +1,9 @@
-import { ClusterPods } from "@jfvilas/plugin-kubelog-common";
+import { ClusterValidPods } from "@jfvilas/plugin-kubelog-common";
 import Chip from "@material-ui/core/Chip";
 import React from "react";
 
 const NamespaceChips = (props: {
-    resources: ClusterPods[]
+    resources: ClusterValidPods[]
     selectedClusterName: string
     selectedNamespace:string
     namespaceList: string[]

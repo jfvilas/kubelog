@@ -7,7 +7,7 @@ import ListItemText from "@material-ui/core/ListItemText";
 import Typography from "@material-ui/core/Typography";
 import React from "react";
 import { makeStyles, Theme } from '@material-ui/core/styles';
-import { ClusterPods } from '@jfvilas/plugin-kubelog-common';
+import { ClusterValidPods } from '@jfvilas/plugin-kubelog-common';
 
 const useStyles = makeStyles((_theme: Theme) => ({
     clusterBox: {
@@ -17,7 +17,7 @@ const useStyles = makeStyles((_theme: Theme) => ({
 }));
    
 const KubelogClusterList = (props: {
-    resources: ClusterPods[];
+    resources: ClusterValidPods[];
     selectedClusterName: string;
     onSelect:(name:string|undefined) => void;
   }) => {
@@ -33,7 +33,7 @@ const KubelogClusterList = (props: {
   
         <List dense>
           {resources.map((cluster, index) => (
-            <ListItem button key={index} selected={selectedClusterName === cluster.name} onClick={() => onSelect(cluster.name)}>
+            <ListItem button key={index} selected={selectedClusterName === cluster.name} onClick={() => onSelect(cluster.name)} disabled={cluster.data.length===0}>
               <ListItemText
                 primary={cluster.name}
                 secondary={

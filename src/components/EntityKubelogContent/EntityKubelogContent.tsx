@@ -18,12 +18,12 @@ import useAsync from 'react-use/esm/useAsync';
 
 import { Content, Progress, WarningPanel } from '@backstage/core-components';
 import { useApi } from '@backstage/core-plugin-api';
-import { accessKeySerialize, ANNOTATION_KUBELOG_LOCATION, isKubelogAvailable, PodData, ClusterPods } from '@jfvilas/plugin-kubelog-common';
+import { ANNOTATION_KUBELOG_LOCATION, isKubelogAvailable, PodData, ClusterValidPods } from '@jfvilas/plugin-kubelog-common';
 import { MissingAnnotationEmptyState, useEntity } from '@backstage/plugin-catalog-react';
 
 // kubelog
 import { kubelogApiRef } from '../../api';
-import { Message } from '../../model/Message';
+import { accessKeySerialize, StreamMessage } from '@jfvilas/kwirth-common';
 
 // kubelog components
 import { ComponentNotFound, ErrorType } from '../ComponentNotFound';
@@ -75,7 +75,7 @@ function versionGreatOrEqualThan(version1: string, version2: string): boolean {
 export const EntityKubelogContent = () => { 
     const { entity } = useEntity();
     const kubelogApi = useApi(kubelogApiRef);
-    const [resources, setResources] = useState<ClusterPods[]>([]);
+    const [resources, setResources] = useState<ClusterValidPods[]>([]);
     const [selectedClusterName, setSelectedClusterName] = useState('');
     const [namespaceList, setNamespaceList] = useState<string[]>([]);
     const [selectedNamespace, setSelectedNamespace] = useState('');
@@ -83,9 +83,9 @@ export const EntityKubelogContent = () => {
     const [started, setStarted] = useState(false);
     const [stopped, setStopped] = useState(true);
     const paused=useRef<boolean>(false);
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [statusMessages, setStatusMessages] = useState<Message[]>([]);
-    const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
+    const [messages, setMessages] = useState<StreamMessage[]>([]);
+    const [statusMessages, setStatusMessages] = useState<StreamMessage[]>([]);
+    const [pendingMessages, setPendingMessages] = useState<StreamMessage[]>([]);
     const [websocket, setWebsocket] = useState<WebSocket>();
     const kubelogOptionsRef = useRef<any>({timestamp:false, previous:false, follow:true});
     const [showStatusDialog, setShowStatusDialog] = useState(false);
@@ -161,7 +161,13 @@ export const EntityKubelogContent = () => {
             return;
         }
 
-        var msg=e as Message;
+        var msg:StreamMessage={
+            namespace: e.namespace,
+            podName: e.podName,
+            type: e.type,
+            text: e.text,
+            timestamp: e.timestamp?new Date(e.timestamp):undefined
+        }
         switch (msg.type) {
             case 'info':
             case 'warning':
@@ -201,8 +207,8 @@ export const EntityKubelogContent = () => {
             //+++ setShowError(msg.text);
             return;
         }
-        console.log(`WS connected`);
-        var payload:LogConfig={ 
+        console.log(`WS connected`)
+        var payload:LogConfig={
             accessKey:accessKeySerialize(pod.accessKey || pod.viewAccessKey),
             scope:'view',
             namespace:selectedNamespace,
@@ -234,7 +240,7 @@ export const EntityKubelogContent = () => {
             setMessages([]);
         }
         catch (err) {
-            setMessages([new Message(`Error opening log stream: ${err}`)]);
+            setMessages([ { type: 'error', text: `Error opening log stream: ${err}`} ]);
         }
 
     }

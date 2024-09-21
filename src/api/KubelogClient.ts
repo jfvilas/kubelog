@@ -16,7 +16,7 @@ limitations under the License.
 import { DiscoveryApi, FetchApi } from '@backstage/core-plugin-api';
 import { KubelogApi } from './types';
 import { Entity } from '@backstage/catalog-model';
-import { ClusterPods } from '@jfvilas/plugin-kubelog-common';
+import { ClusterValidPods } from '@jfvilas/plugin-kubelog-common';
 
 export interface KubelogClientOptions {
     discoveryApi: DiscoveryApi;
@@ -55,14 +55,14 @@ export class KubelogClient implements KubelogApi {
         }
     }
 
-    async getResources(entity:Entity): Promise<ClusterPods> {
+    async getResources(entity:Entity): Promise<ClusterValidPods> {
         try {
             const baseUrl = await this.discoveryApi.getBaseUrl('kubelog');
             const targetUrl = `${baseUrl}/start`;
 
             var payload=JSON.stringify(entity);
             const result = await this.fetchApi.fetch(targetUrl, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
-            const data = await result.json() as ClusterPods;
+            const data = await result.json() as ClusterValidPods;
 
             if (!result.ok) {
                 throw new Error(`getResources error: not ok`);
@@ -74,7 +74,7 @@ export class KubelogClient implements KubelogApi {
         }
     }
 
-    async requestAccess(entity:Entity, scopes:string[]): Promise<ClusterPods> {
+    async requestAccess(entity:Entity, scopes:string[]): Promise<ClusterValidPods> {
         try {
             const baseUrl = await this.discoveryApi.getBaseUrl('kubelog')
             var targetUrl:URL= new URL (`${baseUrl}/access`)
@@ -82,7 +82,7 @@ export class KubelogClient implements KubelogApi {
 
             var payload=JSON.stringify(entity)
             const result = await this.fetchApi.fetch(targetUrl, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}})
-            const data = await result.json() as ClusterPods
+            const data = await result.json() as ClusterValidPods
 
             if (!result.ok) {
                 throw new Error(`requestAccess error: not ok`);

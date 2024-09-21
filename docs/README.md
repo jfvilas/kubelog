@@ -1,6 +1,8 @@
 # Kubelog Plugin
 This package is a Backstage plugin for **viewing logs** and perform **basic operations** in Kubernetes via Kwirth.
 
+**NOTE: Version 0.9.5 implements pod restart, and requires Kwirth 0.2**
+
 This Backstage plugin allows you to view Kubernetes logs associated to your entity directly inside your Backstage instance. It's very important to understand that for this plugin to work you need to install Kwirth on your Kubernetes cluster, that is, this plugin is just another front end for [Kwirth](https://jfvilas.github.io/kwirth).
 
 Starting from Kubelog **version 0.9** you will have the ability to **restart pods** right from Backstage. This capability is not designed to substitute your operation tools, it is just a way for your developers to self-solve restarting-pod problems without the complexity of giving them access to Lens, K9s, Headlamp or kubectl.
@@ -165,3 +167,4 @@ Please take into account that you may be allowed in one namespace but not in ano
  - Add metrics of pod execution (and permissions to view them)
  - It is needed to allow selecting a container when a pod has more than one (has to be implemented also in backend)
  - Validate kwirth configs (rul's, api keys...) when kubelog-backend is initialized
+ - Add pod costs from open cost

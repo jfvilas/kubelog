@@ -1,10 +1,10 @@
-import { Message } from "../../model/Message"
+import { StreamMessage } from '@jfvilas/kwirth-common'
 import React from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@material-ui/core';
 
 const StatusLog = (props:{
         type:string
-        statusMessages:Message[]
+        statusMessages:StreamMessage[]
         onClear: (type:string) => void
         onClose: () => void
     }) => {
@@ -15,7 +15,7 @@ const StatusLog = (props:{
                 Stauts: {props.type} 
             </DialogTitle>
             <DialogContent>
-                { props.statusMessages.filter(m => m.type===props.type).map( (m,index) => <Typography key={index}>{m.timestamp}&nbsp;&nbsp;&nbsp;&nbsp;{m.text}</Typography>) }
+                { props.statusMessages.filter(m => m.type===props.type).map( (m,index) => <Typography key={index}>{m.timestamp?.toISOString()}&nbsp;&nbsp;&nbsp;&nbsp;{m.text}</Typography>) }
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => props.onClear(props.type)} color='primary' variant='contained'>Clear</Button>
