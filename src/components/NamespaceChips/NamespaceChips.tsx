@@ -13,7 +13,7 @@ const NamespaceChips = (props: {
     var cluster=props.resources.find(cluster => cluster.name===props.selectedClusterName);
     return <>{
         props.namespaceList.map ((ns,index) => {
-            var existsAccessKey = cluster?.data.some(p => p.namespace===ns && (p.accessKey || p.viewAccessKey));
+            var existsAccessKey = cluster?.data.some(p => p.namespace===ns && (p.accessKey || p.viewAccessKey || p.restartAccessKey));
             if (existsAccessKey)
                 return <Chip component={'span'} key={index} label={ns as string} onClick={() => props.onSelect(ns as string)} variant={ns===props.selectedNamespace?'default':'outlined'} size='small' color='primary' />
             else
