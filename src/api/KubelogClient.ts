@@ -13,23 +13,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { DiscoveryApi, FetchApi } from '@backstage/core-plugin-api';
-import { KubelogApi } from './types';
-import { Entity } from '@backstage/catalog-model';
-import { ClusterValidPods } from '@jfvilas/plugin-kubelog-common';
+import { DiscoveryApi, FetchApi } from '@backstage/core-plugin-api'
+import { KubelogApi } from './types'
+import { Entity } from '@backstage/catalog-model'
+import { ClusterValidPods } from '@jfvilas/plugin-kubelog-common'
 
 export interface KubelogClientOptions {
-    discoveryApi: DiscoveryApi;
-    fetchApi: FetchApi;
+    discoveryApi: DiscoveryApi
+    fetchApi: FetchApi
 }
 
 export class KubelogClient implements KubelogApi {
-    private readonly discoveryApi: DiscoveryApi;
-    private readonly fetchApi: FetchApi;
+    private readonly discoveryApi: DiscoveryApi
+    private readonly fetchApi: FetchApi
 
     constructor(options: KubelogClientOptions) {
-        this.discoveryApi = options.discoveryApi;
-        this.fetchApi = options.fetchApi;
+        this.discoveryApi = options.discoveryApi
+        this.fetchApi = options.fetchApi
     }
 
     /**
@@ -39,38 +39,38 @@ export class KubelogClient implements KubelogApi {
      */
     async getVersion(): Promise<string> {
         try {
-            const baseUrl = await this.discoveryApi.getBaseUrl('kubelog');
-            const targetUrl = `${baseUrl}/version`;
+            const baseUrl = await this.discoveryApi.getBaseUrl('kubelog')
+            const targetUrl = `${baseUrl}/version`
 
-            const result = await this.fetchApi.fetch(targetUrl);
-            const data = await result.json();
+            const result = await this.fetchApi.fetch(targetUrl)
+            const data = await result.json()
 
             if (!result.ok) {
-                throw new Error(`getVersion error: not ok`);
+                throw new Error(`getVersion error: not ok`)
             }
-            return data.version;
+            return data.version
         }
         catch (err) {
-            throw new Error(`getVersion error: ${err}`);
+            throw new Error(`getVersion error: ${err}`)
         }
     }
 
     async getResources(entity:Entity): Promise<ClusterValidPods> {
         try {
-            const baseUrl = await this.discoveryApi.getBaseUrl('kubelog');
-            const targetUrl = `${baseUrl}/start`;
+            const baseUrl = await this.discoveryApi.getBaseUrl('kubelog')
+            const targetUrl = `${baseUrl}/start`
 
-            var payload=JSON.stringify(entity);
-            const result = await this.fetchApi.fetch(targetUrl, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}});
-            const data = await result.json() as ClusterValidPods;
+            var payload=JSON.stringify(entity)
+            const result = await this.fetchApi.fetch(targetUrl, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}})
+            const data = await result.json() as ClusterValidPods
 
             if (!result.ok) {
-                throw new Error(`getResources error: not ok`);
+                throw new Error(`getResources error: not ok`)
             }
-            return data;
+            return data
         }
         catch (err) {
-            throw new Error(`getResources error: ${err}`);
+            throw new Error(`getResources error: ${err}`)
         }
     }
 
@@ -85,12 +85,12 @@ export class KubelogClient implements KubelogApi {
             const data = await result.json() as ClusterValidPods
 
             if (!result.ok) {
-                throw new Error(`requestAccess error: not ok`);
+                throw new Error(`requestAccess error: not ok`)
             }
-            return data;
+            return data
         }
         catch (err) {
-            throw new Error(`requestAccess error: ${err}`);
+            throw new Error(`requestAccess error: ${err}`)
         }
     }
 

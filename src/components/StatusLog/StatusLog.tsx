@@ -1,24 +1,24 @@
-import { StreamMessage } from '@jfvilas/kwirth-common'
 import React from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@material-ui/core';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@material-ui/core'
+import { ServiceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 
 const StatusLog = (props:{
-        type:string
-        statusMessages:StreamMessage[]
-        onClear: (type:string) => void
+        level: SignalMessageLevelEnum
+        statusMessages: SignalMessage[]
+        onClear: (level:SignalMessageLevelEnum) => void
         onClose: () => void
     }) => {
 
     return (
         <Dialog open={true}>
             <DialogTitle>
-                Stauts: {props.type} 
+                Stauts: {props.level} 
             </DialogTitle>
             <DialogContent>
-                { props.statusMessages.filter(m => m.type===props.type).map( (m,index) => <Typography key={index}>{m.timestamp?.toISOString()}&nbsp;&nbsp;&nbsp;&nbsp;{m.text}</Typography>) }
+                { props.statusMessages.filter(m => m.type === ServiceMessageTypeEnum.SIGNAL && m.level === props.level).map( (m,index) => <Typography key={index}>{m.timestamp?.toISOString()}&nbsp;&nbsp;&nbsp;&nbsp;{m.text}</Typography>) }
             </DialogContent>
             <DialogActions>
-                <Button onClick={() => props.onClear(props.type)} color='primary' variant='contained'>Clear</Button>
+                <Button onClick={() => props.onClear(props.level)} color='primary' variant='contained'>Clear</Button>
                 <Button onClick={props.onClose} color='primary' variant='contained'>Close</Button>
             </DialogActions>
         </Dialog>

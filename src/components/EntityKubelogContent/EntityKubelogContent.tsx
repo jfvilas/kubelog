@@ -13,264 +13,368 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import React, { useRef, useState } from 'react';
-import useAsync from 'react-use/esm/useAsync';
+import React, { useRef, useState } from 'react'
+import useAsync from 'react-use/esm/useAsync'
 
-import { Content, Progress, WarningPanel } from '@backstage/core-components';
-import { useApi } from '@backstage/core-plugin-api';
-import { ANNOTATION_KUBELOG_LOCATION, isKubelogAvailable, PodData, ClusterValidPods } from '@jfvilas/plugin-kubelog-common';
-import { MissingAnnotationEmptyState, useEntity } from '@backstage/plugin-catalog-react';
+import { Content, Progress, WarningPanel } from '@backstage/core-components'
+import { useApi } from '@backstage/core-plugin-api'
+import { ANNOTATION_KUBELOG_LOCATION, isKubelogAvailable, PodData, ClusterValidPods } from '@jfvilas/plugin-kubelog-common'
+import { MissingAnnotationEmptyState, useEntity } from '@backstage/plugin-catalog-react'
 
 // kubelog
-import { kubelogApiRef } from '../../api';
-import { accessKeySerialize, StreamMessage } from '@jfvilas/kwirth-common';
+import { kubelogApiRef } from '../../api'
+import { accessKeySerialize, LogConfig, LogMessage, ServiceConfigActionEnum, ServiceConfigChannelEnum, ServiceConfigFlowEnum, ServiceConfigScopeEnum, ServiceConfigViewEnum, ServiceMessage, ServiceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, versionGreatOrEqualThan } from '@jfvilas/kwirth-common'
 
 // kubelog components
-import { ComponentNotFound, ErrorType } from '../ComponentNotFound';
-import { KubelogOptions } from '../KubelogOptions';
-import { KubelogClusterList } from '../KubelogClusterList';
-import { NamespaceChips } from '../NamespaceChips';
-import { ShowError } from '../ShowError';
-import { StatusLog } from '../StatusLog';
+import { ComponentNotFound, ErrorType } from '../ComponentNotFound'
+import { KubelogOptions } from '../KubelogOptions'
+import { KubelogClusterList } from '../KubelogClusterList'
+import { NamespaceChips } from '../NamespaceChips'
+import { ShowError } from '../ShowError'
+import { StatusLog } from '../StatusLog'
 
 
 // Material-UI
-import { Grid } from '@material-ui/core';
-import { Card, CardHeader, CardContent } from '@material-ui/core';
-import Divider from '@material-ui/core/Divider';
-import IconButton from '@material-ui/core/IconButton';
-import Typography from '@material-ui/core/Typography';
+import { Grid } from '@material-ui/core'
+import { Card, CardHeader, CardContent } from '@material-ui/core'
+import Divider from '@material-ui/core/Divider'
+import IconButton from '@material-ui/core/IconButton'
+import Typography from '@material-ui/core/Typography'
 
 // Icons
-import PlayIcon from '@material-ui/icons/PlayArrow';
-import PauseIcon from '@material-ui/icons/Pause';
-import StopIcon from '@material-ui/icons/Stop';
-import RefreshIcon from '@material-ui/icons/Refresh';
-import InfoIcon from '@material-ui/icons/Info';
-import WarningIcon from '@material-ui/icons/Warning';
-import ErrorIcon from '@material-ui/icons/Error';
-import DownloadIcon from '@material-ui/icons/CloudDownload';
-import KubelogLogo from '../../assets/kubelog-logo.svg';
-import { LogConfig } from '../../model/LogConfig';
-import { versionGreatOrEqualThan } from '../../tools';
+import PlayIcon from '@material-ui/icons/PlayArrow'
+import PauseIcon from '@material-ui/icons/Pause'
+import StopIcon from '@material-ui/icons/Stop'
+import RefreshIcon from '@material-ui/icons/Refresh'
+import InfoIcon from '@material-ui/icons/Info'
+import WarningIcon from '@material-ui/icons/Warning'
+import ErrorIcon from '@material-ui/icons/Error'
+import DownloadIcon from '@material-ui/icons/CloudDownload'
+import KubelogLogo from '../../assets/kubelog-logo.svg'
+//import { LogConfig } from '../../model/LogConfig'
 
 const LOG_MAX_MESSAGES=1000;
 
 export const EntityKubelogContent = () => { 
-    const { entity } = useEntity();
-    const kubelogApi = useApi(kubelogApiRef);
-    const [resources, setResources] = useState<ClusterValidPods[]>([]);
-    const [selectedClusterName, setSelectedClusterName] = useState('');
-    const [namespaceList, setNamespaceList] = useState<string[]>([]);
-    const [selectedNamespace, setSelectedNamespace] = useState('');
-    const [showError, setShowError] = useState('');  //+++ review if this is needed once we have errorMessages
-    const [started, setStarted] = useState(false);
-    const [stopped, setStopped] = useState(true);
-    const paused=useRef<boolean>(false);
-    const [messages, setMessages] = useState<StreamMessage[]>([]);
-    const [statusMessages, setStatusMessages] = useState<StreamMessage[]>([]);
-    const [pendingMessages, setPendingMessages] = useState<StreamMessage[]>([]);
-    const [websocket, setWebsocket] = useState<WebSocket>();
-    const kubelogOptionsRef = useRef<any>({timestamp:false, previous:false, follow:true});
-    const [showStatusDialog, setShowStatusDialog] = useState(false);
-    const [statusType, setStatusType] = useState('');
-    const preRef = useRef<HTMLPreElement|null>(null);
-    const lastRef = useRef<HTMLPreElement|null>(null);
-    const [ backendVersion, setBackendVersion ] = useState<string>('');
+    const { entity } = useEntity()
+    const kubelogApi = useApi(kubelogApiRef)
+    const [resources, setResources] = useState<ClusterValidPods[]>([])
+    const [selectedClusterName, setSelectedClusterName] = useState('')
+    const [namespaceList, setNamespaceList] = useState<string[]>([])
+    const [selectedNamespace, setSelectedNamespace] = useState('')
+    const [showError, setShowError] = useState('')  //+++ review if this is needed once we have errorMessages
+    const [started, setStarted] = useState(false)
+    const [stopped, setStopped] = useState(true)
+    const paused=useRef<boolean>(false)
+    const [messages, setMessages] = useState<LogMessage[]>([])
+    const [pendingMessages, setPendingMessages] = useState<LogMessage[]>([])
+    const [statusMessages, setStatusMessages] = useState<SignalMessage[]>([])
+    const [websocket, setWebsocket] = useState<WebSocket>()
+    const kubelogOptionsRef = useRef<any>({timestamp:false, previous:false, follow:true})
+    const [showStatusDialog, setShowStatusDialog] = useState(false)
+    const [statusLevel, setStatusLevel] = useState<SignalMessageLevelEnum>(SignalMessageLevelEnum.INFO)
+    const preRef = useRef<HTMLPreElement|null>(null)
+    const lastRef = useRef<HTMLPreElement|null>(null)
+    const [ backendVersion, setBackendVersion ] = useState<string>('')
     const { loading, error } = useAsync ( async () => {
-      //var data = await kubelogApi.getResources(entity);  // old endpoint (no restart supported)
-      if (backendVersion==='') setBackendVersion(await kubelogApi.getVersion());
-      var data = await kubelogApi.requestAccess(entity,['view','restart']);
-      setResources(data);
-  });
+        //var data = await kubelogApi.getResources(entity);  // old endpoint (no restart supported)
+        if (backendVersion==='') setBackendVersion(await kubelogApi.getVersion())
+        var data = await kubelogApi.requestAccess(entity,['view','restart'])
+        setResources(data)
+    });
 
     const clickStart = (options:any) => {
-      if (!paused.current) {
-        setStarted(true);
-        paused.current=false;
-        setStopped(false);
-        startLogViewer(options);
-      }
-      else {
-        setMessages( (prev) => [ ...prev, ...pendingMessages]);
-        setPendingMessages([]);
-        paused.current=false;
-        setStarted(true);
-      }
+        if (!paused.current) {
+            setStarted(true)
+            paused.current=false
+            setStopped(false)
+            startLogViewer(options)
+        }
+        else {
+            setMessages( (prev) => [ ...prev, ...pendingMessages])
+            setPendingMessages([])
+            paused.current=false
+            setStarted(true)
+        }
     }
 
     const clickPause = () => {
-      setStarted(false);
-      paused.current=true;
+        setStarted(false)
+        paused.current=true
     }
 
     const clickStop = () => {
-      setStarted(false);
-      setStopped(true);
-      paused.current=false;
-      stopLogViewer();
+        setStarted(false)
+        setStopped(true)
+        paused.current=false
+        stopLogViewer()
     }
 
     const selectCluster = (name:string|undefined) => {
         if (name) {
-            setSelectedClusterName(name);
+            setSelectedClusterName(name)
             resources.filter(cluster => cluster.name===name).map ( x => {
-                var namespaces=Array.from(new Set(x.data.map ( (p:any) => p.namespace))) as string[];
-                setNamespaceList(namespaces);
+                var namespaces=Array.from(new Set(x.data.map ( (p:any) => p.namespace))) as string[]
+                setNamespaceList(namespaces)
             })
-            setSelectedNamespace('');
-            setMessages([{type:'log',text:'Select namespace in order to decide which pod logs to view.'}]);
-            setStatusMessages([]);
-            clickStop();
+            setSelectedNamespace('')
+            setMessages([{
+                channel: ServiceConfigChannelEnum.LOG,
+                type: ServiceMessageTypeEnum.SIGNAL,
+                text: 'Select namespace in order to decide which pod logs to view.',
+                instance: ''
+            }])
+            setStatusMessages([])
+            clickStop()
         }
     }
 
     const selectNamespace = (ns:string) => {
         if (selectedNamespace!==ns) {
-            setSelectedNamespace(ns);
-            setMessages([{type:'log',text:'Press PLAY on top-right button to start viewing your log.'}]);
-            setStatusMessages([]);
-            clickStop();
+            setSelectedNamespace(ns)
+            setMessages([{
+                channel: ServiceConfigChannelEnum.LOG,
+                type: ServiceMessageTypeEnum.SIGNAL,
+                text: 'Press PLAY on top-right button to start viewing your log.',
+                instance: ''
+            }])
+            setStatusMessages([])
+            clickStop()
         }
     }
 
-    const websocketOnChunk = (event:any) => {
-        var e:any={};
-        try {
-            e=JSON.parse(event.data);
-        }
-        catch (err) {
-            console.log(err);
-            console.log(event.data);
-            return;
-        }
-
-        var msg:StreamMessage={
-            namespace: e.namespace,
-            podName: e.podName,
-            type: e.type,
-            text: e.text,
-            timestamp: e.timestamp?new Date(e.timestamp):undefined
-        }
+    const processLogMessage = (wsEvent:any) => {
+        let msg = JSON.parse(wsEvent.data) as ServiceMessage
         switch (msg.type) {
-            case 'info':
-            case 'warning':
-            case 'error':
-                setStatusMessages ((prev) => [...prev, msg]);
-                break;
-            case 'log':
+            case 'data':
+                var lmsg = msg as LogMessage
                 if (paused.current) {
-                    setPendingMessages((prev) => [ ...prev, msg ]);
+                    setPendingMessages((prev) => [ ...prev, lmsg ])
                 }
                 else {
                     setMessages((prev) => {
                         while (prev.length>LOG_MAX_MESSAGES-1) {
-                            prev.splice(0,1);
+                            prev.splice(0,1)
                         }
-                        if (kubelogOptionsRef.current.follow && lastRef.current) lastRef.current.scrollIntoView({ behavior: 'instant', block: 'start' });
-                        return [ ...prev, msg ]
-                    });
+                        if (kubelogOptionsRef.current.follow && lastRef.current) lastRef.current.scrollIntoView({ behavior: 'instant', block: 'start' })
+                        return [ ...prev, lmsg ]
+                    })
                 }        
-                break;
+                break
+            case 'signal':
+                console.log(msg)
+                let smsg = msg as SignalMessage
+                 setStatusMessages ((prev) => [...prev, smsg])
+                break
             default:
-                console.log(msg);
-                setStatusMessages ((prev) => [...prev, {type:'error',text:'Invalid message type received: '+msg.type}]);
-                break;
+                console.log('Invalid message type:')
+                console.log(msg)
+                setStatusMessages ((prev) => [...prev, {
+                    channel: ServiceConfigChannelEnum.LOG,
+                    type: ServiceMessageTypeEnum.SIGNAL,
+                    level: SignalMessageLevelEnum.ERROR,
+                    text: 'Invalid message type received: '+msg.type,
+                    instance: ''
+                }])
+                break
         }
     }
+    
+    const websocketOnChunk = (wsEvent:any) => {
+        let serviceMessage:ServiceMessage
+        try {
+            serviceMessage = JSON.parse(wsEvent.data) as ServiceMessage
+        }
+        catch (err) {
+            console.log(err)
+            console.log(wsEvent.data)
+            return
+        }
+
+        switch(serviceMessage.channel) {
+            case 'log':
+                processLogMessage(wsEvent)
+                break
+            // case 'metrics':
+            //     processMetricsMessage(wsEvent)
+            //     break
+            // case 'oper':
+            //     processOperMessage(wsEvent)
+            //     break
+            // case 'audit':
+            //     processAuditMessage(wsEvent)
+            //     break
+            default:
+                console.log('Invalid channel in message: ', serviceMessage)
+                break
+        }
+
+    }
+
+    // const websocketOnChunk = (event:any) => {
+    //     var e:any={}
+    //     try {
+    //         e=JSON.parse(event.data)
+    //     }
+    //     catch (err) {
+    //         console.log(err)
+    //         console.log(event.data)
+    //         return;
+    //     }
+
+    //     var msg:StreamMessage={
+    //         namespace: e.namespace,
+    //         podName: e.podName,
+    //         type: e.type,
+    //         text: e.text,
+    //         timestamp: e.timestamp?new Date(e.timestamp):undefined
+    //     }
+    //     switch (msg.type) {
+    //         case 'info':
+    //         case 'warning':
+    //         case 'error':
+    //             setStatusMessages ((prev) => [...prev, msg])
+    //             break
+    //         case 'log':
+    //             if (paused.current) {
+    //                 setPendingMessages((prev) => [ ...prev, msg ])
+    //             }
+    //             else {
+    //                 setMessages((prev) => {
+    //                     while (prev.length>LOG_MAX_MESSAGES-1) {
+    //                         prev.splice(0,1)
+    //                     }
+    //                     if (kubelogOptionsRef.current.follow && lastRef.current) lastRef.current.scrollIntoView({ behavior: 'instant', block: 'start' })
+    //                     return [ ...prev, msg ]
+    //                 })
+    //             }        
+    //             break
+    //         default:
+    //             console.log(msg)
+    //             setStatusMessages ((prev) => [...prev, {type:'error',text:'Invalid message type received: '+msg.type}])
+    //             break
+    //     }
+    // }
 
     const websocketOnOpen = (ws:WebSocket, options:any) => {
-        var cluster=resources.find(cluster => cluster.name===selectedClusterName);
+        let cluster=resources.find(cluster => cluster.name===selectedClusterName)
         if (!cluster) {
             //+++ setShowError(msg.text);
-            return;
+            return
         }
-        var pod=(cluster.data as PodData[]).find(p => p.namespace===selectedNamespace);
+        let pod=(cluster.data as PodData[]).find(p => p.namespace===selectedNamespace)
 
         if (!pod) {
             //+++ setShowError(msg.text);
-            return;
+            return
         }
         console.log(`WS connected`)
-        var payload:LogConfig={
-            accessKey:accessKeySerialize(pod.accessKey || pod.viewAccessKey),
-            scope:'view',
-            namespace:selectedNamespace,
-            set:'',
-            group:'',
-            pod:pod.name,
-            container:'',
-            view:'pod',
-            timestamp:options.timestamp,
-            previous:options.previous,
-            maxMessages:LOG_MAX_MESSAGES
-        };
-        ws.send(JSON.stringify(payload));
+
+        // var payload:LogConfig={
+        //     accessKey:accessKeySerialize(pod.accessKey || pod.viewAccessKey),
+        //     scope:'view',
+        //     namespace:selectedNamespace,
+        //     set:'',
+        //     group:'',
+        //     pod:pod.name,
+        //     container:'',
+        //     view:'pod',
+        //     timestamp:options.timestamp,
+        //     previous:options.previous,
+        //     maxMessages:LOG_MAX_MESSAGES
+        // };
+        let logConfig:LogConfig = {
+            action: ServiceConfigActionEnum.START,
+            flow: ServiceConfigFlowEnum.REQUEST,
+            channel: ServiceConfigChannelEnum.LOG,
+            instance: '',
+            accessKey: accessKeySerialize(pod.accessKey || pod.viewAccessKey),
+            scope: ServiceConfigScopeEnum.VIEW,
+            view: ServiceConfigViewEnum.POD,
+            namespace: selectedNamespace,
+            set: '',
+            group: '',
+            pod: pod.name,
+            container: '',
+            timestamp: options.timestamp,
+            previous: options.previous,
+            maxMessages: LOG_MAX_MESSAGES,
+        }
+        ws.send(JSON.stringify(logConfig))
     }
 
     const startLogViewer = (options:any) => {
-        var cluster=resources.find(cluster => cluster.name===selectedClusterName);
+        let cluster=resources.find(cluster => cluster.name===selectedClusterName);
         if (!cluster) {
             //+++ show wargning
-            return;
+            return
         }
 
         try {
-            var ws = new WebSocket(cluster.url);
-            ws.onopen = () => websocketOnOpen(ws, options); 
-            ws.onmessage = (event) => websocketOnChunk(event);
-            ws.onclose = (event) => websocketOnClose(event);
-            setWebsocket(ws);
-            setMessages([]);
+            let ws = new WebSocket(cluster.url)
+            ws.onopen = () => websocketOnOpen(ws, options)
+            ws.onmessage = (event) => websocketOnChunk(event)
+            ws.onclose = (event) => websocketOnClose(event)
+            setWebsocket(ws)
+            setMessages([])
         }
         catch (err) {
-            setMessages([ { type: 'error', text: `Error opening log stream: ${err}`} ]);
+            setMessages([ {
+                channel: ServiceConfigChannelEnum.LOG,
+                type: ServiceMessageTypeEnum.DATA,
+                text: `Error opening log stream: ${err}`,
+                instance: ''
+            } ])
         }
 
     }
 
     const websocketOnClose = (_event:any) => {
-      console.log(`WS disconnected`);
-      setStarted(false);
-      paused.current=false;
-      setStopped(true);
+      console.log(`WS disconnected`)
+      setStarted(false)
+      paused.current=false
+      setStopped(true)
     }
 
     const stopLogViewer = () => {
-      messages.push({type:'log',text:'============================================================================================================================'});
-      websocket?.close();
+        messages.push({
+            channel: ServiceConfigChannelEnum.LOG,
+            type: ServiceMessageTypeEnum.DATA,
+            text: '============================================================================================================================',
+            instance: ''
+        })
+        websocket?.close()
     }
 
     const changeLogConfig = (options:any) => {
-        kubelogOptionsRef.current=options;
+        kubelogOptionsRef.current=options
         if (started) {
-            //clickStop();
-            clickStart(options);
+            clickStart(options)
         }
     }
 
     const handleDownload = () => {
-      var content=preRef.current!.innerHTML.replaceAll('<pre>','').replaceAll('</pre>','\n');
-      var filename=selectedClusterName+'-'+selectedNamespace+'-'+entity.metadata.name+'.txt';
-      var mimeType:string='text/plain';
+      let content=preRef.current!.innerHTML.replaceAll('<pre>','').replaceAll('</pre>','\n')
+      let filename=selectedClusterName+'-'+selectedNamespace+'-'+entity.metadata.name+'.txt'
+      let mimeType:string='text/plain'
   
-      const blob = new Blob([content], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const blob = new Blob([content], { type: mimeType })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
     }
   
     const actionButtons = () => {
-        var hasViewKey=false;
-        var cluster=resources.find(cluster => cluster.name===selectedClusterName);
+        let hasViewKey=false
+        let cluster=resources.find(cluster => cluster.name===selectedClusterName)
         if (cluster) {
-            var podData = (cluster.data as PodData[]).find(p => p.namespace===selectedNamespace);
-            hasViewKey = Boolean(podData?.viewAccessKey);
+            var podData = (cluster.data as PodData[]).find(p => p.namespace===selectedNamespace)
+            hasViewKey = Boolean(podData?.viewAccessKey)
         }
 
         return <>
@@ -286,15 +390,15 @@ export const EntityKubelogContent = () => {
             <IconButton onClick={clickStop} title="Stop" disabled={stopped || selectedNamespace===''}>
                 <StopIcon />
             </IconButton>
-        </>;
+        </>
     }
 
     const restartPod = () => {
-        var cluster=resources.find(cluster => cluster.name===selectedClusterName);
+        let cluster=resources.find(cluster => cluster.name===selectedClusterName)
         if (cluster) {
-            var pod=(cluster.data as PodData[]).find(p => p.namespace===selectedNamespace)
-            var url=cluster.url+`/managecluster/restartpod/${pod?.namespace}/${pod?.name}`
-            var fetchOptions= {
+            let pod=(cluster.data as PodData[]).find(p => p.namespace===selectedNamespace)
+            let url=cluster.url+`/managecluster/restartpod/${pod?.namespace}/${pod?.name}`
+            let fetchOptions= {
                 method:'POST',
                 headers: {
                     Authorization: 'Bearer ' + accessKeySerialize (pod?.restartAccessKey!),
@@ -306,13 +410,13 @@ export const EntityKubelogContent = () => {
     }
 
     const statusButtons = (title:string) => {
-        const show = (type:string) => {
-            setShowStatusDialog(true);
-            setStatusType(type);
+        const show = (level:SignalMessageLevelEnum) => {
+            setShowStatusDialog(true)
+            setStatusLevel(level)
         }
 
-        var cluster=resources.find(cluster => cluster.name===selectedClusterName);
-        var existsRestartAccessKey = cluster?.data.some(p => p.namespace===selectedNamespace && p.restartAccessKey);
+        let cluster=resources.find(cluster => cluster.name===selectedClusterName);
+        let existsRestartAccessKey = cluster?.data.some(p => p.namespace===selectedNamespace && p.restartAccessKey);
 
         return (
             <Grid container direction='row' >
@@ -325,24 +429,23 @@ export const EntityKubelogContent = () => {
                         <RefreshIcon/>
                     </IconButton>
                 }
-                <IconButton title="info" disabled={!statusMessages.some(m=>m.type==='info')} onClick={() => show('info')}>
-                    <InfoIcon style={{ color:statusMessages.some(m=>m.type==='info')?'blue':'#BDBDBD'}}/>
+                <IconButton title="info" disabled={!statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.INFO)} onClick={() => show(SignalMessageLevelEnum.INFO)}>
+                    <InfoIcon style={{ color:statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.INFO)?'blue':'#BDBDBD'}}/>
                 </IconButton>
-                <IconButton title="warning" disabled={!statusMessages.some(m=>m.type==='warning')} onClick={() => show('warning')} style={{marginLeft:'-16px'}}>
-                    <WarningIcon style={{ color:statusMessages.some(m=>m.type==='warning')?'gold':'#BDBDBD'}}/>
+                <IconButton title="warning" disabled={!statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.WARNING)} onClick={() => show(SignalMessageLevelEnum.WARNING)} style={{marginLeft:'-16px'}}>
+                    <WarningIcon style={{ color:statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.WARNING)?'gold':'#BDBDBD'}}/>
                 </IconButton>
-                <IconButton title="error" disabled={!statusMessages.some(m=>m.type==='error')} onClick={() => show('error')} style={{marginLeft:'-16px'}}>
-                    <ErrorIcon style={{ color:statusMessages.some(m=>m.type==='error')?'red':'#BDBDBD'}}/>
+                <IconButton title="error" disabled={!statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.ERROR)} onClick={() => show(SignalMessageLevelEnum.ERROR)} style={{marginLeft:'-16px'}}>
+                    <ErrorIcon style={{ color:statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.ERROR)?'red':'#BDBDBD'}}/>
                 </IconButton>
                 </Grid>
             </Grid>
         )
     }
 
-    const statusClear = (type:string) => {
-        console.log('clear',type);
-        setStatusMessages(statusMessages.filter(m=> m.type!==type));
-        setShowStatusDialog(false);
+    const statusClear = (level: SignalMessageLevelEnum) => {
+        setStatusMessages(statusMessages.filter(m=> m.level!==level))
+        setShowStatusDialog(false)
     }
     
     return (<>
@@ -416,6 +519,6 @@ export const EntityKubelogContent = () => {
             }
         </Content>
 
-        { showStatusDialog && <StatusLog type={statusType} onClose={() => setShowStatusDialog(false)} statusMessages={statusMessages} onClear={statusClear}/>}
+        { showStatusDialog && <StatusLog level={statusLevel} onClose={() => setShowStatusDialog(false)} statusMessages={statusMessages} onClear={statusClear}/>}
     </>)
 }

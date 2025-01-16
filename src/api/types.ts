@@ -13,15 +13,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { Entity } from '@backstage/catalog-model';
-import { createApiRef } from '@backstage/core-plugin-api';
+import { Entity } from '@backstage/catalog-model'
+import { createApiRef } from '@backstage/core-plugin-api'
 
 export interface KubelogApi {
-    getResources(entity:Entity): Promise<any>;
-    requestAccess(entity:Entity, scopes:string[]): Promise<any>;
-    getVersion(): Promise<any>;
+    getResources(entity:Entity): Promise<any>
+    requestAccess(entity:Entity, scopes:string[]): Promise<any>
+    getVersion(): Promise<any>
 }
 
 export const kubelogApiRef = createApiRef<KubelogApi>({
   id: 'plugin.kubelog.api',
-});
+})

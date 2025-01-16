@@ -13,12 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import React from 'react';
-import { Entity } from '@backstage/catalog-model';
-import { CodeSnippet } from '@backstage/core-components';
-import { Button, Grid, Typography } from '@material-ui/core';
-import KubelogComponentNotFound from '../../assets/kubelog-component-not-found.svg';
-import { ANNOTATION_KUBELOG_LOCATION } from '@jfvilas/plugin-kubelog-common';
+import React from 'react'
+import { Entity } from '@backstage/catalog-model'
+import { CodeSnippet } from '@backstage/core-components'
+import { Button, Grid, Typography } from '@material-ui/core'
+import KubelogComponentNotFound from '../../assets/kubelog-component-not-found.svg'
+import { ANNOTATION_KUBELOG_LOCATION } from '@jfvilas/plugin-kubelog-common'
 
 enum ErrorType {
   NO_PODS,
