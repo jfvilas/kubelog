@@ -1,7 +1,9 @@
 # Kubelog Plugin
 This package is a Backstage plugin for **viewing logs** and perform **basic operations** in Kubernetes via Kwirth.
 
-**NOTE: Version 0.9.5 implements pod restart, and requires Kwirth 0.2**
+
+**NOTE: Starting with Kubelog 0.10.1, Kwirth required version is at least 0.2.213**
+
 
 This Backstage plugin allows you to view Kubernetes logs associated to your entity directly inside your Backstage instance. It's very important to understand that for this plugin to work you need to install Kwirth on your Kubernetes cluster, that is, this plugin is just another front end for [Kwirth](https://jfvilas.github.io/kwirth).
 

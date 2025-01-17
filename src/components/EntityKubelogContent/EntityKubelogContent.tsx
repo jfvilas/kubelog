@@ -79,9 +79,11 @@ export const EntityKubelogContent = () => {
     const { loading, error } = useAsync ( async () => {
         //var data = await kubelogApi.getResources(entity);  // old endpoint (no restart supported)
         if (backendVersion==='') setBackendVersion(await kubelogApi.getVersion())
+        console.log('**************************')
         var data = await kubelogApi.requestAccess(entity,['view','restart'])
+        console.log(data)
         setResources(data)
-    });
+    })
 
     const clickStart = (options:any) => {
         if (!paused.current) {
