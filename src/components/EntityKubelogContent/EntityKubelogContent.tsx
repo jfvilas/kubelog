@@ -162,7 +162,6 @@ export const EntityKubelogContent = () => {
                 }        
                 break
             case 'signal':
-                console.log(msg)
                 let smsg = msg as SignalMessage
                  setStatusMessages ((prev) => [...prev, smsg])
                 break
@@ -195,15 +194,6 @@ export const EntityKubelogContent = () => {
             case 'log':
                 processLogMessage(wsEvent)
                 break
-            // case 'metrics':
-            //     processMetricsMessage(wsEvent)
-            //     break
-            // case 'oper':
-            //     processOperMessage(wsEvent)
-            //     break
-            // case 'audit':
-            //     processAuditMessage(wsEvent)
-            //     break
             default:
                 console.log('Invalid channel in message: ', serviceMessage)
                 break
