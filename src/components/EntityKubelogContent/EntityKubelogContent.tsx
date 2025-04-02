@@ -23,7 +23,7 @@ import { MissingAnnotationEmptyState, useEntity } from '@backstage/plugin-catalo
 
 // kubelog
 import { kubelogApiRef } from '../../api'
-import { accessKeySerialize, LogConfig, LogMessage, ServiceConfigActionEnum, ServiceConfigChannelEnum, ServiceConfigFlowEnum, ServiceConfigScopeEnum, ServiceConfigViewEnum, ServiceMessage, ServiceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, versionGreatOrEqualThan } from '@jfvilas/kwirth-common'
+import { accessKeySerialize, LogMessage, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, versionGreatOrEqualThan, InstanceConfigObjectEnum, InstanceConfig } from '@jfvilas/kwirth-common'
 
 // kubelog components
 import { ComponentNotFound, ErrorType } from '../ComponentNotFound'
@@ -70,7 +70,7 @@ export const EntityKubelogContent = () => {
     const [pendingMessages, setPendingMessages] = useState<LogMessage[]>([])
     const [statusMessages, setStatusMessages] = useState<SignalMessage[]>([])
     const [websocket, setWebsocket] = useState<WebSocket>()
-    const kubelogOptionsRef = useRef<any>({timestamp:false, previous:false, follow:true})
+    const kubelogOptionsRef = useRef<any>({timestamp:false, previous:false, follow:true, fromStart:false})
     const [showStatusDialog, setShowStatusDialog] = useState(false)
     const [statusLevel, setStatusLevel] = useState<SignalMessageLevelEnum>(SignalMessageLevelEnum.INFO)
     const preRef = useRef<HTMLPreElement|null>(null)
@@ -79,9 +79,7 @@ export const EntityKubelogContent = () => {
     const { loading, error } = useAsync ( async () => {
         //var data = await kubelogApi.getResources(entity);  // old endpoint (no restart supported)
         if (backendVersion==='') setBackendVersion(await kubelogApi.getVersion())
-        console.log('**************************')
         var data = await kubelogApi.requestAccess(entity,['view','restart'])
-        console.log(data)
         setResources(data)
     })
 
@@ -121,8 +119,8 @@ export const EntityKubelogContent = () => {
             })
             setSelectedNamespace('')
             setMessages([{
-                channel: ServiceConfigChannelEnum.LOG,
-                type: ServiceMessageTypeEnum.SIGNAL,
+                channel: InstanceConfigChannelEnum.LOG,
+                type: InstanceMessageTypeEnum.SIGNAL,
                 text: 'Select namespace in order to decide which pod logs to view.',
                 instance: ''
             }])
@@ -135,8 +133,8 @@ export const EntityKubelogContent = () => {
         if (selectedNamespace!==ns) {
             setSelectedNamespace(ns)
             setMessages([{
-                channel: ServiceConfigChannelEnum.LOG,
-                type: ServiceMessageTypeEnum.SIGNAL,
+                channel: InstanceConfigChannelEnum.LOG,
+                type: InstanceMessageTypeEnum.SIGNAL,
                 text: 'Press PLAY on top-right button to start viewing your log.',
                 instance: ''
             }])
@@ -146,7 +144,7 @@ export const EntityKubelogContent = () => {
     }
 
     const processLogMessage = (wsEvent:any) => {
-        let msg = JSON.parse(wsEvent.data) as ServiceMessage
+        let msg = JSON.parse(wsEvent.data) as InstanceMessage
         switch (msg.type) {
             case 'data':
                 var lmsg = msg as LogMessage
@@ -172,8 +170,8 @@ export const EntityKubelogContent = () => {
                 console.log('Invalid message type:')
                 console.log(msg)
                 setStatusMessages ((prev) => [...prev, {
-                    channel: ServiceConfigChannelEnum.LOG,
-                    type: ServiceMessageTypeEnum.SIGNAL,
+                    channel: InstanceConfigChannelEnum.LOG,
+                    type: InstanceMessageTypeEnum.SIGNAL,
                     level: SignalMessageLevelEnum.ERROR,
                     text: 'Invalid message type received: '+msg.type,
                     instance: ''
@@ -183,9 +181,9 @@ export const EntityKubelogContent = () => {
     }
     
     const websocketOnChunk = (wsEvent:any) => {
-        let serviceMessage:ServiceMessage
+        let serviceMessage:InstanceMessage
         try {
-            serviceMessage = JSON.parse(wsEvent.data) as ServiceMessage
+            serviceMessage = JSON.parse(wsEvent.data) as InstanceMessage
         }
         catch (err) {
             console.log(err)
@@ -213,96 +211,59 @@ export const EntityKubelogContent = () => {
 
     }
 
-    // const websocketOnChunk = (event:any) => {
-    //     var e:any={}
-    //     try {
-    //         e=JSON.parse(event.data)
-    //     }
-    //     catch (err) {
-    //         console.log(err)
-    //         console.log(event.data)
-    //         return;
-    //     }
-
-    //     var msg:StreamMessage={
-    //         namespace: e.namespace,
-    //         podName: e.podName,
-    //         type: e.type,
-    //         text: e.text,
-    //         timestamp: e.timestamp?new Date(e.timestamp):undefined
-    //     }
-    //     switch (msg.type) {
-    //         case 'info':
-    //         case 'warning':
-    //         case 'error':
-    //             setStatusMessages ((prev) => [...prev, msg])
-    //             break
-    //         case 'log':
-    //             if (paused.current) {
-    //                 setPendingMessages((prev) => [ ...prev, msg ])
-    //             }
-    //             else {
-    //                 setMessages((prev) => {
-    //                     while (prev.length>LOG_MAX_MESSAGES-1) {
-    //                         prev.splice(0,1)
-    //                     }
-    //                     if (kubelogOptionsRef.current.follow && lastRef.current) lastRef.current.scrollIntoView({ behavior: 'instant', block: 'start' })
-    //                     return [ ...prev, msg ]
-    //                 })
-    //             }        
-    //             break
-    //         default:
-    //             console.log(msg)
-    //             setStatusMessages ((prev) => [...prev, {type:'error',text:'Invalid message type received: '+msg.type}])
-    //             break
-    //     }
-    // }
-
     const websocketOnOpen = (ws:WebSocket, options:any) => {
-        let cluster=resources.find(cluster => cluster.name===selectedClusterName)
+        let cluster=resources.find(cluster => cluster.name === selectedClusterName)
         if (!cluster) {
             //+++ setShowError(msg.text);
             return
         }
-        let pod=(cluster.data as PodData[]).find(p => p.namespace===selectedNamespace)
+        let pod=(cluster.data as PodData[]).find(p => p.namespace === selectedNamespace)
 
         if (!pod) {
             //+++ setShowError(msg.text);
             return
         }
         console.log(`WS connected`)
-
-        // var payload:LogConfig={
-        //     accessKey:accessKeySerialize(pod.accessKey || pod.viewAccessKey),
-        //     scope:'view',
-        //     namespace:selectedNamespace,
-        //     set:'',
-        //     group:'',
-        //     pod:pod.name,
-        //     container:'',
-        //     view:'pod',
-        //     timestamp:options.timestamp,
-        //     previous:options.previous,
-        //     maxMessages:LOG_MAX_MESSAGES
-        // };
-        let logConfig:LogConfig = {
-            action: ServiceConfigActionEnum.START,
-            flow: ServiceConfigFlowEnum.REQUEST,
-            channel: ServiceConfigChannelEnum.LOG,
+        // let logConfig:LogConfig = {
+        //     action: InstanceConfigActionEnum.START,
+        //     flow: InstanceConfigFlowEnum.REQUEST,
+        //     channel: InstanceConfigChannelEnum.LOG,
+        //     instance: '',
+        //     accessKey: accessKeySerialize(pod.accessKey || pod.viewAccessKey),
+        //     scope: InstanceConfigScopeEnum.VIEW,
+        //     view: InstanceConfigViewEnum.POD,
+        //     namespace: selectedNamespace,
+        //     group: '',
+        //     pod: pod.name,
+        //     container: '',
+        //     data: {
+        //         timestamp: options.timestamp,
+        //         previous: options.previous,
+        //         maxMessages: LOG_MAX_MESSAGES
+        //     },
+        //     objects: InstanceConfigObjectEnum.PODS
+        // }
+        let iConfig:InstanceConfig = {
+            action: InstanceConfigActionEnum.START,
+            flow: InstanceConfigFlowEnum.REQUEST,
+            channel: InstanceConfigChannelEnum.LOG,
             instance: '',
             accessKey: accessKeySerialize(pod.accessKey || pod.viewAccessKey),
-            scope: ServiceConfigScopeEnum.VIEW,
-            view: ServiceConfigViewEnum.POD,
+            scope: InstanceConfigScopeEnum.VIEW,
+            view: InstanceConfigViewEnum.POD,
             namespace: selectedNamespace,
-            set: '',
             group: '',
             pod: pod.name,
             container: '',
-            timestamp: options.timestamp,
-            previous: options.previous,
-            maxMessages: LOG_MAX_MESSAGES,
+            data: {
+                timestamp: options.timestamp,
+                previous: options.previous,
+                maxMessages: LOG_MAX_MESSAGES,
+                fromStart: options.fromStart
+            },
+            objects: InstanceConfigObjectEnum.PODS
         }
-        ws.send(JSON.stringify(logConfig))
+        ws.send(JSON.stringify(iConfig))
     }
 
     const startLogViewer = (options:any) => {
@@ -322,8 +283,8 @@ export const EntityKubelogContent = () => {
         }
         catch (err) {
             setMessages([ {
-                channel: ServiceConfigChannelEnum.LOG,
-                type: ServiceMessageTypeEnum.DATA,
+                channel: InstanceConfigChannelEnum.LOG,
+                type: InstanceMessageTypeEnum.DATA,
                 text: `Error opening log stream: ${err}`,
                 instance: ''
             } ])
@@ -340,8 +301,8 @@ export const EntityKubelogContent = () => {
 
     const stopLogViewer = () => {
         messages.push({
-            channel: ServiceConfigChannelEnum.LOG,
-            type: ServiceMessageTypeEnum.DATA,
+            channel: InstanceConfigChannelEnum.LOG,
+            type: InstanceMessageTypeEnum.DATA,
             text: '============================================================================================================================',
             instance: ''
         })
@@ -431,14 +392,14 @@ export const EntityKubelogContent = () => {
                         <RefreshIcon/>
                     </IconButton>
                 }
-                <IconButton title="info" disabled={!statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.INFO)} onClick={() => show(SignalMessageLevelEnum.INFO)}>
-                    <InfoIcon style={{ color:statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.INFO)?'blue':'#BDBDBD'}}/>
+                <IconButton title="info" disabled={!statusMessages.some(m=>m.type === InstanceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.INFO)} onClick={() => show(SignalMessageLevelEnum.INFO)}>
+                    <InfoIcon style={{ color:statusMessages.some(m=>m.type === InstanceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.INFO)?'blue':'#BDBDBD'}}/>
                 </IconButton>
-                <IconButton title="warning" disabled={!statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.WARNING)} onClick={() => show(SignalMessageLevelEnum.WARNING)} style={{marginLeft:'-16px'}}>
-                    <WarningIcon style={{ color:statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.WARNING)?'gold':'#BDBDBD'}}/>
+                <IconButton title="warning" disabled={!statusMessages.some(m=>m.type === InstanceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.WARNING)} onClick={() => show(SignalMessageLevelEnum.WARNING)} style={{marginLeft:'-16px'}}>
+                    <WarningIcon style={{ color:statusMessages.some(m=>m.type === InstanceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.WARNING)?'gold':'#BDBDBD'}}/>
                 </IconButton>
-                <IconButton title="error" disabled={!statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.ERROR)} onClick={() => show(SignalMessageLevelEnum.ERROR)} style={{marginLeft:'-16px'}}>
-                    <ErrorIcon style={{ color:statusMessages.some(m=>m.type=== ServiceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.ERROR)?'red':'#BDBDBD'}}/>
+                <IconButton title="error" disabled={!statusMessages.some(m=>m.type === InstanceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.ERROR)} onClick={() => show(SignalMessageLevelEnum.ERROR)} style={{marginLeft:'-16px'}}>
+                    <ErrorIcon style={{ color:statusMessages.some(m=>m.type === InstanceMessageTypeEnum.SIGNAL && m.level=== SignalMessageLevelEnum.ERROR)?'red':'#BDBDBD'}}/>
                 </IconButton>
                 </Grid>
             </Grid>
