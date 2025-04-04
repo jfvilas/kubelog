@@ -83,6 +83,8 @@ export class KubelogClient implements KubelogApi {
             var payload=JSON.stringify(entity)
             const result = await this.fetchApi.fetch(targetUrl, {method:'POST', body:payload, headers:{'Content-Type':'application/json'}})
             const data = await result.json() as ClusterValidPods
+            console.log('data')
+            console.log(data)
 
             if (!result.ok) {
                 throw new Error(`requestAccess error: not ok`)

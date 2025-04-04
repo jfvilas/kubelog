@@ -51,7 +51,6 @@ import WarningIcon from '@material-ui/icons/Warning'
 import ErrorIcon from '@material-ui/icons/Error'
 import DownloadIcon from '@material-ui/icons/CloudDownload'
 import KubelogLogo from '../../assets/kubelog-logo.svg'
-//import { LogConfig } from '../../model/LogConfig'
 
 const LOG_MAX_MESSAGES=1000;
 
@@ -77,7 +76,6 @@ export const EntityKubelogContent = () => {
     const lastRef = useRef<HTMLPreElement|null>(null)
     const [ backendVersion, setBackendVersion ] = useState<string>('')
     const { loading, error } = useAsync ( async () => {
-        //var data = await kubelogApi.getResources(entity);  // old endpoint (no restart supported)
         if (backendVersion==='') setBackendVersion(await kubelogApi.getVersion())
         var data = await kubelogApi.requestAccess(entity,['view','restart'])
         setResources(data)
@@ -214,25 +212,6 @@ export const EntityKubelogContent = () => {
             return
         }
         console.log(`WS connected`)
-        // let logConfig:LogConfig = {
-        //     action: InstanceConfigActionEnum.START,
-        //     flow: InstanceConfigFlowEnum.REQUEST,
-        //     channel: InstanceConfigChannelEnum.LOG,
-        //     instance: '',
-        //     accessKey: accessKeySerialize(pod.accessKey || pod.viewAccessKey),
-        //     scope: InstanceConfigScopeEnum.VIEW,
-        //     view: InstanceConfigViewEnum.POD,
-        //     namespace: selectedNamespace,
-        //     group: '',
-        //     pod: pod.name,
-        //     container: '',
-        //     data: {
-        //         timestamp: options.timestamp,
-        //         previous: options.previous,
-        //         maxMessages: LOG_MAX_MESSAGES
-        //     },
-        //     objects: InstanceConfigObjectEnum.PODS
-        // }
         let iConfig:InstanceConfig = {
             action: InstanceConfigActionEnum.START,
             flow: InstanceConfigFlowEnum.REQUEST,
