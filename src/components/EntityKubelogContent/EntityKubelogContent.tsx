@@ -23,14 +23,13 @@ import { MissingAnnotationEmptyState, useEntity } from '@backstage/plugin-catalo
 
 // kubelog
 import { kubelogApiRef } from '../../api'
-import { accessKeySerialize, LogMessage, InstanceConfigActionEnum, InstanceConfigChannelEnum, InstanceConfigFlowEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, versionGreatOrEqualThan, InstanceConfigObjectEnum, InstanceConfig } from '@jfvilas/kwirth-common'
+import { accessKeySerialize, LogMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, versionGreatOrEqualThan, InstanceConfigObjectEnum, InstanceConfig, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
 
 // kubelog components
 import { ComponentNotFound, ErrorType } from '../ComponentNotFound'
 import { KubelogOptions } from '../KubelogOptions'
 import { KubelogClusterList } from '../KubelogClusterList'
 import { NamespaceChips } from '../NamespaceChips'
-import { ShowError } from '../ShowError'
 import { StatusLog } from '../StatusLog'
 
 
@@ -61,12 +60,11 @@ export const EntityKubelogContent = () => {
     const [selectedClusterName, setSelectedClusterName] = useState('')
     const [namespaceList, setNamespaceList] = useState<string[]>([])
     const [selectedNamespace, setSelectedNamespace] = useState('')
-    const [showError, setShowError] = useState('')  //+++ review if this is needed once we have errorMessages
     const [started, setStarted] = useState(false)
     const [stopped, setStopped] = useState(true)
     const paused=useRef<boolean>(false)
-    const [messages, setMessages] = useState<LogMessage[]>([])
-    const [pendingMessages, setPendingMessages] = useState<LogMessage[]>([])
+    const [messages, setMessages] = useState<ILogLine[]>([])
+    const [pendingMessages, setPendingMessages] = useState<ILogLine[]>([])
     const [statusMessages, setStatusMessages] = useState<SignalMessage[]>([])
     const [websocket, setWebsocket] = useState<WebSocket>()
     const kubelogOptionsRef = useRef<any>({timestamp:false, previous:false, follow:true, fromStart:false})
@@ -80,6 +78,16 @@ export const EntityKubelogContent = () => {
         var data = await kubelogApi.requestAccess(entity,['view','restart'])
         setResources(data)
     })
+    const buffer = useRef('')
+
+    interface ILogLine {
+        namespace: string
+        pod: string
+        container: string
+        timestamp?: Date
+        type: string
+        text: string
+    }
 
     const clickStart = (options:any) => {
         if (!paused.current) {
@@ -117,10 +125,11 @@ export const EntityKubelogContent = () => {
             })
             setSelectedNamespace('')
             setMessages([{
-                channel: InstanceConfigChannelEnum.LOG,
                 type: InstanceMessageTypeEnum.SIGNAL,
                 text: 'Select namespace in order to decide which pod logs to view.',
-                instance: ''
+                namespace: '',
+                pod: '',
+                container: ''
             }])
             setStatusMessages([])
             clickStop()
@@ -131,10 +140,11 @@ export const EntityKubelogContent = () => {
         if (selectedNamespace!==ns) {
             setSelectedNamespace(ns)
             setMessages([{
-                channel: InstanceConfigChannelEnum.LOG,
                 type: InstanceMessageTypeEnum.SIGNAL,
                 text: 'Press PLAY on top-right button to start viewing your log.',
-                instance: ''
+                namespace: '',
+                pod: '',
+                container: ''
             }])
             setStatusMessages([])
             clickStop()
@@ -142,36 +152,61 @@ export const EntityKubelogContent = () => {
     }
 
     const processLogMessage = (wsEvent:any) => {
-        let msg = JSON.parse(wsEvent.data) as InstanceMessage
-        switch (msg.type) {
-            case 'data':
-                var lmsg = msg as LogMessage
-                if (paused.current) {
-                    setPendingMessages((prev) => [ ...prev, lmsg ])
+        let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
+        switch (instanceMessage.type) {
+            case InstanceMessageTypeEnum.DATA:
+                let logMessage = instanceMessage as LogMessage
+                let text = logMessage.text
+                if (buffer.current!=='') {
+                    text = buffer.current + text
+                    buffer.current = ''
                 }
-                else {
-                    setMessages((prev) => {
-                        while (prev.length>LOG_MAX_MESSAGES-1) {
-                            prev.splice(0,1)
-                        }
-                        if (kubelogOptionsRef.current.follow && lastRef.current) lastRef.current.scrollIntoView({ behavior: 'instant', block: 'start' })
-                        return [ ...prev, lmsg ]
-                    })
-                }        
+                if (!text.endsWith('\n')) {
+                    let i = text.lastIndexOf('\n')
+                    let next = text.substring(i)
+                    buffer.current = next
+                    text = text.substring(0,i)
+                }
+
+                for (let line of text.split('\n')) {
+                    if (line.trim() === '') continue
+
+                    let logLine:ILogLine = {
+                        text: line,
+                        namespace: logMessage.namespace,
+                        pod: logMessage.pod,
+                        container: logMessage.container,
+                        type: logMessage.type
+                    }
+                    if (paused.current) {
+                        setPendingMessages((prev) => [ ...prev, logLine ])
+                    }
+                    else {
+                        setMessages((prev) => {
+                            while (prev.length>LOG_MAX_MESSAGES-1) {
+                                prev.splice(0,1)
+                            }
+                            if (kubelogOptionsRef.current.follow && lastRef.current) lastRef.current.scrollIntoView({ behavior: 'instant', block: 'start' })
+                            return [ ...prev, logLine ]
+                        })
+                    }
+                }
                 break
-            case 'signal':
-                let smsg = msg as SignalMessage
-                 setStatusMessages ((prev) => [...prev, smsg])
+            case InstanceMessageTypeEnum.SIGNAL:
+                let signalMessage = instanceMessage as SignalMessage
+                 setStatusMessages ((prev) => [...prev, signalMessage])
                 break
             default:
                 console.log('Invalid message type:')
-                console.log(msg)
+                console.log(instanceMessage)
                 setStatusMessages ((prev) => [...prev, {
-                    channel: InstanceConfigChannelEnum.LOG,
+                    channel: InstanceMessageChannelEnum.LOG,
                     type: InstanceMessageTypeEnum.SIGNAL,
                     level: SignalMessageLevelEnum.ERROR,
-                    text: 'Invalid message type received: '+msg.type,
-                    instance: ''
+                    text: 'Invalid message type received: ' + instanceMessage.type,
+                    instance: '',
+                    action: InstanceMessageActionEnum.NONE,
+                    flow: InstanceMessageFlowEnum.UNSOLICITED
                 }])
                 break
         }
@@ -189,7 +224,7 @@ export const EntityKubelogContent = () => {
         }
 
         switch(serviceMessage.channel) {
-            case 'log':
+            case InstanceMessageChannelEnum.LOG:
                 processLogMessage(wsEvent)
                 break
             default:
@@ -201,21 +236,15 @@ export const EntityKubelogContent = () => {
 
     const websocketOnOpen = (ws:WebSocket, options:any) => {
         let cluster=resources.find(cluster => cluster.name === selectedClusterName)
-        if (!cluster) {
-            //+++ setShowError(msg.text);
-            return
-        }
+        if (!cluster) return
         let pod=(cluster.data as PodData[]).find(p => p.namespace === selectedNamespace)
+        if (!pod) return
 
-        if (!pod) {
-            //+++ setShowError(msg.text);
-            return
-        }
         console.log(`WS connected`)
         let iConfig:InstanceConfig = {
-            action: InstanceConfigActionEnum.START,
-            flow: InstanceConfigFlowEnum.REQUEST,
-            channel: InstanceConfigChannelEnum.LOG,
+            action: InstanceMessageActionEnum.START,
+            flow: InstanceMessageFlowEnum.REQUEST,
+            channel: InstanceMessageChannelEnum.LOG,
             instance: '',
             accessKey: accessKeySerialize(pod.accessKey || pod.viewAccessKey),
             scope: InstanceConfigScopeEnum.VIEW,
@@ -230,17 +259,15 @@ export const EntityKubelogContent = () => {
                 maxMessages: LOG_MAX_MESSAGES,
                 fromStart: options.fromStart
             },
-            objects: InstanceConfigObjectEnum.PODS
+            objects: InstanceConfigObjectEnum.PODS,
+            type: InstanceMessageTypeEnum.SIGNAL
         }
         ws.send(JSON.stringify(iConfig))
     }
 
     const startLogViewer = (options:any) => {
         let cluster=resources.find(cluster => cluster.name===selectedClusterName);
-        if (!cluster) {
-            //+++ show wargning
-            return
-        }
+        if (!cluster) return
 
         try {
             let ws = new WebSocket(cluster.url)
@@ -252,10 +279,11 @@ export const EntityKubelogContent = () => {
         }
         catch (err) {
             setMessages([ {
-                channel: InstanceConfigChannelEnum.LOG,
-                type: InstanceMessageTypeEnum.DATA,
+                type: InstanceMessageTypeEnum.SIGNAL,
                 text: `Error opening log stream: ${err}`,
-                instance: ''
+                namespace: '',
+                pod: '',
+                container: ''
             } ])
         }
 
@@ -270,10 +298,11 @@ export const EntityKubelogContent = () => {
 
     const stopLogViewer = () => {
         messages.push({
-            channel: InstanceConfigChannelEnum.LOG,
-            type: InstanceMessageTypeEnum.DATA,
+            type: InstanceMessageTypeEnum.SIGNAL,
             text: '============================================================================================================================',
-            instance: ''
+            namespace: '',
+            pod: '',
+            container: ''
         })
         websocket?.close()
     }
@@ -382,8 +411,6 @@ export const EntityKubelogContent = () => {
     
     return (<>
         <Content>
-            { showError!=='' && <ShowError message={showError} onClose={() => setShowError('')}/> }
-
             { loading && <Progress/> }
 
             {!isKubelogAvailable(entity) && !loading && error && (
