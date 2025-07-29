@@ -58,7 +58,7 @@ const ComponentNotFound = (props: {error: ErrorType, entity:Entity}) => {
       customStyle={{ background: 'inherit' }}
     />;
 
-    var nopodsMsg=`Although this component is well tagged, and we have found some clusters configured in Backstage, we were unable to find "${props.entity.metadata.name}" running on any pod. Maybe you need to tag Kubernetes objects (deployment and pod templates).`;
+    var nopodsMsg=`Although this component is well tagged inside Backstage, and we have found some clusters configured in Backstage, we were unable to find "${props.entity.metadata.name}" running on any pod. Maybe you need to tag Kubernetes objects (deployment and pod templates).`;
     var noclustersMsg=`Although this component has a correct 'kubernetes-id' in the ${props.entity.metadata.name} Component YAML, we couldn't find any cluster. Maybe you need to tag Kubernetes objects (deployments and pod templates).`;
   
     switch(props.error) {
