@@ -23,7 +23,7 @@ import { MissingAnnotationEmptyState, useEntity } from '@backstage/plugin-catalo
 
 // kubelog
 import { kubelogApiRef } from '../../api'
-import { accessKeySerialize, LogMessage, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, versionGreatOrEqualThan, InstanceConfigObjectEnum, InstanceConfig, InstanceMessageChannelEnum } from '@jfvilas/kwirth-common'
+import { accessKeySerialize, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, versionGreatOrEqualThan, InstanceConfigObjectEnum, InstanceConfig, InstanceMessageChannelEnum, ILogMessage } from '@jfvilas/kwirth-common'
 
 // kubelog components
 import { ComponentNotFound, ErrorType } from '../ComponentNotFound'
@@ -155,7 +155,7 @@ export const EntityKubelogContent = () => {
         let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
         switch (instanceMessage.type) {
             case InstanceMessageTypeEnum.DATA:
-                let logMessage = instanceMessage as LogMessage
+                let logMessage = instanceMessage as ILogMessage
                 let text = logMessage.text
                 if (buffer.current!=='') {
                     text = buffer.current + text
