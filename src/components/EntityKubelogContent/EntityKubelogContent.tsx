@@ -23,7 +23,7 @@ import { MissingAnnotationEmptyState, useEntity } from '@backstage/plugin-catalo
 
 // kubelog
 import { kubelogApiRef } from '../../api'
-import { accessKeySerialize, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, InstanceMessage, InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum, versionGreatOrEqualThan, InstanceConfigObjectEnum, InstanceConfig, InstanceMessageChannelEnum, ILogMessage } from '@jfvilas/kwirth-common'
+import { accessKeySerialize, InstanceMessageActionEnum, InstanceMessageFlowEnum, InstanceConfigScopeEnum, InstanceConfigViewEnum, IInstanceMessage, InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum, versionGreatOrEqualThan, InstanceConfigObjectEnum, InstanceConfig, InstanceMessageChannelEnum, ILogMessage } from '@jfvilas/kwirth-common'
 
 // kubelog components
 import { ComponentNotFound, ErrorType } from '../ComponentNotFound'
@@ -65,7 +65,7 @@ export const EntityKubelogContent = () => {
     const paused=useRef<boolean>(false)
     const [messages, setMessages] = useState<ILogLine[]>([])
     const [pendingMessages, setPendingMessages] = useState<ILogLine[]>([])
-    const [statusMessages, setStatusMessages] = useState<SignalMessage[]>([])
+    const [statusMessages, setStatusMessages] = useState<ISignalMessage[]>([])
     const [websocket, setWebsocket] = useState<WebSocket>()
     const kubelogOptionsRef = useRef<any>({timestamp:false, previous:false, follow:true, fromStart:false})
     const [showStatusDialog, setShowStatusDialog] = useState(false)
@@ -152,7 +152,7 @@ export const EntityKubelogContent = () => {
     }
 
     const processLogMessage = (wsEvent:any) => {
-        let instanceMessage = JSON.parse(wsEvent.data) as InstanceMessage
+        let instanceMessage = JSON.parse(wsEvent.data) as IInstanceMessage
         switch (instanceMessage.type) {
             case InstanceMessageTypeEnum.DATA:
                 let logMessage = instanceMessage as ILogMessage
@@ -193,7 +193,7 @@ export const EntityKubelogContent = () => {
                 }
                 break
             case InstanceMessageTypeEnum.SIGNAL:
-                let signalMessage = instanceMessage as SignalMessage
+                let signalMessage = instanceMessage as ISignalMessage
                  setStatusMessages ((prev) => [...prev, signalMessage])
                 break
             default:
@@ -213,9 +213,9 @@ export const EntityKubelogContent = () => {
     }
     
     const websocketOnChunk = (wsEvent:any) => {
-        let serviceMessage:InstanceMessage
+        let serviceMessage:IInstanceMessage
         try {
-            serviceMessage = JSON.parse(wsEvent.data) as InstanceMessage
+            serviceMessage = JSON.parse(wsEvent.data) as IInstanceMessage
         }
         catch (err) {
             console.log(err)

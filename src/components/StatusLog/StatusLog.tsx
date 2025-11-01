@@ -1,10 +1,10 @@
 import React from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@material-ui/core'
-import { InstanceMessageTypeEnum, SignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
+import { InstanceMessageTypeEnum, ISignalMessage, SignalMessageLevelEnum } from '@jfvilas/kwirth-common'
 
 const StatusLog = (props:{
         level: SignalMessageLevelEnum
-        statusMessages: SignalMessage[]
+        statusMessages: ISignalMessage[]
         onClear: (level:SignalMessageLevelEnum) => void
         onClose: () => void
     }) => {
