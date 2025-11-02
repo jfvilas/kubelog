@@ -16,6 +16,7 @@ Following table shows version compatibility between Kubelog and Kwirth Core.
 
 | Plugin Kwirth version | Kwirth version |
 |-|-|
+|0.11.7|0.4.131|
 |0.11.6|0.4.20|
 |0.11.1|0.3.160|
 |0.10.1|0.2.213|
