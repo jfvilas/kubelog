@@ -51,7 +51,7 @@ import ErrorIcon from '@material-ui/icons/Error'
 import DownloadIcon from '@material-ui/icons/CloudDownload'
 import KubelogLogo from '../../assets/kubelog-logo.svg'
 
-const LOG_MAX_MESSAGES=1000;
+const LOG_MAX_MESSAGES=1000
 
 export const EntityKubelogContent = () => { 
     const { entity } = useEntity()

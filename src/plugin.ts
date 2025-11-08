@@ -36,7 +36,7 @@ export const kubelogPlugin = createPlugin({
   routes: {
     root: rootRouteRef
   }
-});
+})
 
 export const EntityKubelogContent = kubelogPlugin.provide(
   createRoutableExtension({
@@ -45,4 +45,4 @@ export const EntityKubelogContent = kubelogPlugin.provide(
       import('./components/EntityKubelogContent').then(m => m.EntityKubelogContent),
     mountPoint: rootRouteRef
   })
-);
+)
